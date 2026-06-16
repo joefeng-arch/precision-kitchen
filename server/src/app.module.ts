@@ -15,7 +15,6 @@ import { FavoritesModule } from './modules/favorites/favorites.module';
 import { IngredientsModule } from './modules/ingredients/ingredients.module';
 import { RecipesModule } from './modules/recipes/recipes.module';
 import { TimersModule } from './modules/timers/timers.module';
-import { MealPlansModule } from './modules/meal-plans/meal-plans.module';
 import { ShareModule } from './modules/share/share.module';
 import { ShoppingListModule } from './modules/shopping-list/shopping-list.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
@@ -94,7 +93,6 @@ import { HealthController } from './health.controller';
     TimersModule,
     FavoritesModule,
     AdminModule,
-    MealPlansModule,
     ShareModule,
     ShoppingListModule,
     UploadsModule,
