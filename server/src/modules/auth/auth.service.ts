@@ -51,9 +51,10 @@ export class AuthService {
     // 1. 委托 provider 认证，拿到第三方身份
     const authResult = await provider.authenticate(credentials);
 
-    // 2. 创建/更新本地用户
-    const user = await this.users.upsertByOpenid({
-      openid: authResult.externalId,
+    // 2. 创建/更新本地用户（按 provider + externalId 复合身份键）
+    const user = await this.users.upsertByExternalId({
+      provider: providerType,
+      externalId: authResult.externalId,
       unionid: authResult.unionId,
       nickname: authResult.profile?.nickname,
       avatar: authResult.profile?.avatar,

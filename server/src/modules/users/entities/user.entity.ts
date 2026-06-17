@@ -22,6 +22,13 @@ export class User {
   @Column({ type: 'varchar', length: 64, nullable: true })
   unionid!: string | null;
 
+  // 泛化身份键：登录方式 + 第三方唯一 ID。(provider, externalId) 复合唯一。
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  provider!: string | null; // 'wechat' | 'mock' | 'apple' | 'google' | ...
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  externalId!: string | null; // 微信 openid / Apple sub / mock-种子
+
   @Column({ type: 'varchar', length: 64, default: '吃货' })
   nickname!: string;
 

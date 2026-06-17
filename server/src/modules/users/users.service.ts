@@ -24,13 +24,23 @@ export class UsersService {
     return this.repo.findOne({ where: { openid } });
   }
 
-  async upsertByOpenid(input: {
-    openid: string;
+  findByExternalId(provider: string, externalId: string): Promise<User | null> {
+    return this.repo.findOne({ where: { provider, externalId } });
+  }
+
+  /**
+   * 按 (provider, externalId) 复合键 upsert 用户。
+   * 微信用户额外镜像写 openid = externalId，保持 JWT/seed/admin 里读 openid 的逻辑兼容；
+   * 非微信用户 openid 保持 null。
+   */
+  async upsertByExternalId(input: {
+    provider: string;
+    externalId: string;
     unionid?: string | null;
     nickname?: string;
     avatar?: string | null;
   }): Promise<User> {
-    const existing = await this.findByOpenid(input.openid);
+    const existing = await this.findByExternalId(input.provider, input.externalId);
     if (existing) {
       if (input.unionid !== undefined) existing.unionid = input.unionid;
       if (input.nickname) existing.nickname = input.nickname;
@@ -39,7 +49,10 @@ export class UsersService {
     }
     try {
       const user = this.repo.create({
-        openid: input.openid,
+        provider: input.provider,
+        externalId: input.externalId,
+        // 向后兼容：仅微信用户镜像 openid，其余保持 null
+        openid: input.provider === 'wechat' ? input.externalId : null,
         unionid: input.unionid ?? null,
         nickname: input.nickname ?? '吃货',
         avatar: input.avatar ?? null,
@@ -49,7 +62,7 @@ export class UsersService {
     } catch (err: any) {
       // 并发竞争：另一个请求已插入，回查返回
       if (err?.code === '23505') {
-        const u = await this.findByOpenid(input.openid);
+        const u = await this.findByExternalId(input.provider, input.externalId);
         if (u) return u;
       }
       throw err;

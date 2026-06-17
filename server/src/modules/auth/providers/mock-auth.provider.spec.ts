@@ -56,7 +56,7 @@ describe('AuthService.login("mock") 端到端签发 JWT（DB 层 mock）', () =>
       nickname: 'Dev User alice', avatar: null, lastLoginAt: null,
     };
     const usersMock: any = {
-      upsertByOpenid: jest.fn().mockResolvedValue(savedUser),
+      upsertByExternalId: jest.fn().mockResolvedValue(savedUser),
       save: jest.fn().mockResolvedValue(savedUser),
     };
 
@@ -75,8 +75,8 @@ describe('AuthService.login("mock") 端到端签发 JWT（DB 层 mock）', () =>
     expect(decoded.openid).toBe('mock-alice');
     expect(decoded.role).toBe('user');
 
-    expect(usersMock.upsertByOpenid).toHaveBeenCalledWith(
-      expect.objectContaining({ openid: 'mock-alice' }),
+    expect(usersMock.upsertByExternalId).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: 'mock', externalId: 'mock-alice' }),
     );
     expect(res.user.id).toBe('user-1');
   });
