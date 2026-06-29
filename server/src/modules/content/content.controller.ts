@@ -29,14 +29,14 @@ export class ContentController {
   constructor(private readonly svc: ContentCheckService) {}
 
   @Post('check-text')
-  @ApiOperation({ summary: '文本内容安全检查（微信 msg_sec_check）' })
+  @ApiOperation({ summary: '文本内容安全检查' })
   async checkText(@Body() dto: CheckTextDto) {
     const result = await this.svc.checkText(dto.content);
     return result;
   }
 
   @Post('check-image')
-  @ApiOperation({ summary: '图片内容安全检查（微信 img_sec_check）' })
+  @ApiOperation({ summary: '图片内容安全检查' })
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(
     FileInterceptor('file', {

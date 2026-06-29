@@ -8,7 +8,6 @@ import { jwtConfig } from './config/jwt.config';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ContentModule } from './modules/content/content.module';
-import { WxModule } from './modules/wx/wx.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { CookingModule } from './modules/cooking/cooking.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
@@ -82,7 +81,6 @@ import { HealthController } from './health.controller';
         return { store };
       },
     }),
-    WxModule,
     AuthModule,
     UsersModule,
     ContentModule,

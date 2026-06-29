@@ -15,7 +15,6 @@ import { join } from 'path';
 
 import { ShareCode } from './entities/share-code.entity';
 import { Recipe } from '../recipes/entities/recipe.entity';
-import { WxAccessTokenService } from '../wx/wx-access-token.service';
 
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './uploads';
 const QRCODE_CACHE_TTL = 86400; // 24h
@@ -32,7 +31,6 @@ export class ShareService {
     @Inject(CACHE_MANAGER)
     private readonly cache: any,
     private readonly config: ConfigService,
-    private readonly wxToken: WxAccessTokenService,
   ) {
     // Ensure upload directory exists
     if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -96,81 +94,11 @@ export class ShareService {
     return { recipeId: shareCode.recipeId };
   }
 
-  // ─── WeChat Access Token (delegated to WxAccessTokenService) ──
-  private getAccessToken(): Promise<string> {
-    return this.wxToken.getAccessToken();
-  }
-
   // ─── Create QR Code Image ──────────────────────────────────
+  // 标准二维码，指向 H5 分享链接 FRONTEND_URL?scene=<shortCode>。
+  // 海外无小程序码，统一用 'qrcode' 包生成普通二维码。
   private async createQrcodeImage(shortCode: string): Promise<string> {
-    const appid = this.config.get<string>('WX_APPID');
-    const secret = this.config.get<string>('WX_SECRET');
-    const env = this.config.get<string>('NODE_ENV', 'development');
-    const hasWxCreds = Boolean(appid && secret);
-
-    if (hasWxCreds && env !== 'development') {
-      // ── Production: 调用微信 getUnlimited API ──
-      return this.createWxacode(shortCode);
-    }
-
-    // ── Dev fallback: 生成普通 QR 码 ──
-    return this.createFallbackQrcode(shortCode);
-  }
-
-  private async createWxacode(shortCode: string): Promise<string> {
-    const accessToken = await this.getAccessToken();
-    const url = `https://api.weixin.qq.com/wxa/getwxacodeunlimit?access_token=${accessToken}`;
-
-    const body = JSON.stringify({
-      scene: shortCode,
-      page: 'pages/index/index',
-      width: 280,
-      env_version: 'release',
-      is_hyaline: false,
-    });
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
-
     try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        signal: controller.signal,
-      });
-
-      const contentType = res.headers.get('content-type') || '';
-
-      // WeChat returns JSON on error, binary image on success
-      if (contentType.includes('application/json')) {
-        const errData = (await res.json()) as { errcode: number; errmsg: string };
-        this.logger.error(`wxacode error: ${JSON.stringify(errData)}`);
-        throw new InternalServerErrorException(
-          `生成小程序码失败 [${errData.errcode}]: ${errData.errmsg}`,
-        );
-      }
-
-      // Success — binary PNG
-      const buffer = Buffer.from(await res.arrayBuffer());
-      const filename = `qrcode-${shortCode}.png`;
-      const filepath = join(UPLOAD_DIR, filename);
-      writeFileSync(filepath, buffer);
-
-      return `/uploads/${filename}`;
-    } catch (err) {
-      if (err instanceof InternalServerErrorException) throw err;
-      this.logger.error(`wxacode network error: ${(err as Error).message}`);
-      throw new InternalServerErrorException('生成小程序码网络异常');
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  private async createFallbackQrcode(shortCode: string): Promise<string> {
-    // Dev mode: generate a standard QR code using the 'qrcode' npm package
-    try {
-      // Dynamic require to avoid hard dependency — qrcode is a dev/fallback-only dep
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const QRCode = require('qrcode') as any;
       const frontendUrl = this.config.get<string>(
@@ -188,10 +116,9 @@ export class ShareService {
       const filepath = join(UPLOAD_DIR, filename);
       writeFileSync(filepath, buffer);
 
-      this.logger.warn(`[dev] Generated fallback QR code for scene=${shortCode}`);
       return `/uploads/${filename}`;
     } catch (err) {
-      this.logger.error(`Fallback QR generation failed: ${(err as Error).message}`);
+      this.logger.error(`QR generation failed: ${(err as Error).message}`);
       throw new InternalServerErrorException('生成二维码失败');
     }
   }
