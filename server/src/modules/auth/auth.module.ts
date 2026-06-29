@@ -6,7 +6,6 @@ import { AUTH_PROVIDERS } from '../../common/interfaces/auth-provider.interface'
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { WxAuthProvider } from './providers/wx-auth.provider';
 import { MockAuthProvider } from './providers/mock-auth.provider';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
@@ -32,7 +31,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 
     // ── Auth Providers ──────────────────────────────────────
     // 每个 provider 先作为普通 class 注册（NestJS 管理其生命周期）
-    WxAuthProvider,
     MockAuthProvider, // 本地 dev 登录，受 ALLOW_MOCK_LOGIN 控制
     // 添加新登录方式：
     //   AppleAuthProvider,
@@ -43,7 +41,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       provide: AUTH_PROVIDERS,
       useFactory: (...providers: InstanceType<any>[]) => providers,
       inject: [
-        WxAuthProvider,
         MockAuthProvider,
         // 新增 provider 时在此追加：
         // AppleAuthProvider,

@@ -68,17 +68,6 @@ export class AuthService {
     return this.signToken(user);
   }
 
-  /**
-   * 微信登录快捷方法 — 保持向后兼容
-   * 控制器的 POST /auth/wx-login 调用此方法
-   */
-  async wxLogin(
-    code: string,
-    profile?: { nickname?: string; avatar?: string | null },
-  ) {
-    return this.login('wechat', { code, profile });
-  }
-
   // ─── 内部方法 ───────────────────────────────────────────────
 
   private signToken(user: User) {

@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, JwtUserPayload } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
-import { WxLoginDto } from './dto/wx-login.dto';
+import { LoginDto } from './dto/login.dto';
 import { MockLoginDto } from './dto/mock-login.dto';
 
 @ApiTags('auth')
@@ -11,11 +11,14 @@ import { MockLoginDto } from './dto/mock-login.dto';
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
-  @Post('wx-login')
+  @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: '微信小程序登录（dev 环境支持 mock-xxx code）' })
-  wxLogin(@Body() dto: WxLoginDto) {
-    return this.auth.wxLogin(dto.code, { nickname: dto.nickname, avatar: dto.avatar });
+  @ApiOperation({ summary: '通用登录：按 provider 路由到对应 AuthProvider' })
+  login(@Body() dto: LoginDto) {
+    return this.auth.login(dto.provider, {
+      code: dto.code,
+      profile: { nickname: dto.nickname, avatar: dto.avatar },
+    });
   }
 
   @Post('mock-login')
