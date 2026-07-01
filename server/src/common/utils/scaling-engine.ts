@@ -42,6 +42,8 @@ export interface EngineIngredient {
   scaleType?: ScaleType;
   /** 仅 linear_legacy，默认 0.7 */
   scaleFactor?: number;
+  /** 可选：取整小数位（dp=0→1g, dp=1→0.1g）。缺省由 defaultRoundDp 解析；仅新 profile 生效 */
+  roundDp?: number | null;
 }
 
 export interface ScaledIngredient {
@@ -95,16 +97,51 @@ export type ScaleSpec =
 // 实现
 // ---------------------------------------------------------------------------
 
-/** 组装单条结果并统一取整（roundAmount 复用国内版取整规则） */
-function toResult(ing: EngineIngredient, raw: number): ScaledIngredient {
+/** 组装单条结果；取整函数由各 profile 传入（linear_legacy 用 roundAmount，新 profile 用 roundToDp） */
+function toResult(
+  ing: EngineIngredient,
+  raw: number,
+  round: (v: number) => number,
+): ScaledIngredient {
   return {
     id: ing.id,
     name: ing.name,
     unit: ing.unit,
     role: ing.role,
     originalAmount: ing.amount,
-    scaledAmount: roundAmount(raw),
+    scaledAmount: round(raw),
   };
+}
+
+/** 按小数位取整（新 profile 用；linear_legacy 仍用国内 roundAmount 保持行为不变） */
+export function roundToDp(value: number, dp: number): number {
+  const f = Math.pow(10, dp);
+  return Math.round(value * f) / f;
+}
+
+/**
+ * 缺省取整精度：调用方未显式给 roundDp 时的 per-profile + role 默认，编码 PRD §4.1 方向。
+ * 显式 EngineIngredient.roundDp 永远优先。
+ * 说明：bakers 的 percentage 默认 0.1g（盐/酵母正确；水也 0.1g，比方向的 1g 更细、无害，
+ * 调用方可 roundDp:0 覆盖为 1g）。ratio/multi_ratio 的角色恰好对齐方向。
+ */
+export function defaultRoundDp(profile: ScalingProfile, ing: EngineIngredient): number {
+  switch (profile) {
+    case 'bakers_percentage':
+      return ing.role === 'anchor' ? 0 : 1; // 面粉 1g；盐/酵母/水 0.1g
+    case 'ratio_based':
+      return ing.role === 'anchor' ? 1 : 0; // 咖啡粉 0.1g；水 1g
+    case 'multi_ratio':
+      return ing.role === 'percentage' ? 1 : 0; // 糖/奶 0.1g；液体 1g
+    case 'linear_legacy':
+      return 0; // 不走此路（linear_legacy 用 roundAmount）
+  }
+}
+
+/** 为某原料生成取整函数：显式 roundDp 优先，否则 defaultRoundDp 解析 */
+function roundFor(profile: ScalingProfile, ing: EngineIngredient): (v: number) => number {
+  const dp = ing.roundDp ?? defaultRoundDp(profile, ing);
+  return (v) => roundToDp(v, dp);
 }
 
 /** 正数守卫：拒绝 0 / 负 / NaN / undefined，防止静默 NaN 传播到最终克数 */
@@ -150,7 +187,7 @@ export function scaleLinearLegacy(
       ing.scaleType ?? 'linear',
       ing.scaleFactor ?? 0.7,
     );
-    return toResult(ing, raw);
+    return toResult(ing, raw, roundAmount); // linear_legacy 行为不变
   });
 }
 
@@ -184,11 +221,12 @@ export function scaleBakersPercentage(
   const recipeFactor = F / originalAnchor;
 
   return ingredients.map((ing) => {
+    const round = roundFor('bakers_percentage', ing);
     if (ing.role === 'fixed') {
-      return toResult(ing, ing.amount);
+      return toResult(ing, ing.amount, round);
     }
     const raw = (F * pctOf(ing)) / 100;
-    return toResult(ing, applyCorrection(raw, recipeFactor, ing.correction));
+    return toResult(ing, applyCorrection(raw, recipeFactor, ing.correction), round);
   });
 }
 
@@ -213,7 +251,7 @@ export function scaleRatio(ingredients: EngineIngredient[], lock: RatioLock): Sc
       `ratio member id=${ing.id} must have ratioValue > 0`,
     );
     const raw = applyCorrection(unit * rv, recipeFactor, ing.correction);
-    return toResult(ing, raw);
+    return toResult(ing, raw, roundFor('ratio_based', ing));
   });
 }
 
@@ -300,7 +338,11 @@ export function scaleMultiRatio(
 
   // 3. 组装；未被任何组/百分比覆盖的原料回退原量
   return ingredients.map((ing) =>
-    toResult(ing, raw.has(ing.id) ? (raw.get(ing.id) as number) : ing.amount),
+    toResult(
+      ing,
+      raw.has(ing.id) ? (raw.get(ing.id) as number) : ing.amount,
+      roundFor('multi_ratio', ing),
+    ),
   );
 }
 

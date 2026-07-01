@@ -1,7 +1,10 @@
 import {
   EngineIngredient,
   ScaledIngredient,
+  ScalingRole,
   applyCorrection,
+  defaultRoundDp,
+  roundToDp,
   scaleBakersPercentage,
   scaleLinearLegacy,
   scaleMultiRatio,
@@ -227,8 +230,8 @@ describe('scaleMultiRatio (奶茶 / 鸡尾酒)', () => {
       groups: [{ group: 'tea_base', lockedId: 'tea', lockedValue: 5 }],
       percentBase: { group: 'tea_base' },
     });
-    expect(amt(r, 'sugar')).toBe(5.2); // 65 * 8% = 5.2（<10 保留 1 位）
-    expect(amt(r, 'milk')).toBe(20); // 65 * 30% = 19.5 → roundAmount(≥10 取整) = 20
+    expect(amt(r, 'sugar')).toBe(5.2); // 65 * 8% = 5.2（糖 0.1g）
+    expect(amt(r, 'milk')).toBe(19.5); // 65 * 30% = 19.5（糖/奶 0.1g，不再被 ≥10 取整成 20）
   });
 
   it('锁组总量 total=65 → tea=5, water=60（与锁单项等价）', () => {
@@ -354,5 +357,118 @@ describe('scaleRecipe (分发器)', () => {
         'spirit',
       ),
     ).toBe(60);
+  });
+});
+
+describe('roundToDp (按小数位取整)', () => {
+  it('dp=0 取整到 1', () => {
+    expect(roundToDp(19.5, 0)).toBe(20);
+    expect(roundToDp(300.4, 0)).toBe(300);
+  });
+
+  it('dp=1 保留 0.1（19.5 不再被吞成整数）', () => {
+    expect(roundToDp(19.5, 1)).toBe(19.5);
+    expect(roundToDp(15.25, 1)).toBe(15.3);
+    expect(roundToDp(300, 1)).toBe(300);
+  });
+
+  it('dp=2 保留 0.01', () => {
+    expect(roundToDp(4.847, 2)).toBe(4.85);
+  });
+});
+
+describe('defaultRoundDp (per-profile + role 默认精度)', () => {
+  const mk = (role: ScalingRole): EngineIngredient => ({ id: 'x', amount: 1, unit: 'g', role });
+
+  it('bakers：anchor 1g(dp0)，其余 0.1g(dp1)', () => {
+    expect(defaultRoundDp('bakers_percentage', mk('anchor'))).toBe(0);
+    expect(defaultRoundDp('bakers_percentage', mk('percentage'))).toBe(1);
+  });
+
+  it('ratio：anchor(咖啡粉) 0.1g(dp1)，其余(水) 1g(dp0)', () => {
+    expect(defaultRoundDp('ratio_based', mk('anchor'))).toBe(1);
+    expect(defaultRoundDp('ratio_based', mk('ratio_linked'))).toBe(0);
+  });
+
+  it('multi_ratio：percentage(糖/奶) 0.1g(dp1)，液体 1g(dp0)', () => {
+    expect(defaultRoundDp('multi_ratio', mk('percentage'))).toBe(1);
+    expect(defaultRoundDp('multi_ratio', mk('ratio_linked'))).toBe(0);
+  });
+});
+
+describe('per-profile 取整精度落地', () => {
+  it('bakers：面粉 1g、盐 0.1g（非整数场景）', () => {
+    const ings: EngineIngredient[] = [
+      { id: 'flour', amount: 500, unit: 'g', role: 'anchor', percentageValue: 100 },
+      { id: 'salt', amount: 10, unit: 'g', role: 'percentage', percentageValue: 2 },
+    ];
+    // F=1230 → 面粉 1230(1g)；盐 1230*2/100=24.6(0.1g)
+    const r = scaleBakersPercentage(ings, { mode: 'anchor', value: 1230 });
+    expect(amt(r, 'flour')).toBe(1230);
+    expect(amt(r, 'salt')).toBe(24.6);
+  });
+
+  it('bakers：显式 roundDp=0 把水从默认 0.1g 覆盖为 1g', () => {
+    const base: EngineIngredient[] = [
+      { id: 'flour', amount: 500, unit: 'g', role: 'anchor', percentageValue: 100 },
+      { id: 'water', amount: 250, unit: 'g', role: 'percentage', percentageValue: 50 },
+    ];
+    // F=1301 → water raw = 650.5
+    const dflt = scaleBakersPercentage(base, { mode: 'anchor', value: 1301 });
+    expect(amt(dflt, 'water')).toBe(650.5); // 默认 dp1
+
+    const overridden: EngineIngredient[] = [base[0], { ...base[1], roundDp: 0 }];
+    const r = scaleBakersPercentage(overridden, { mode: 'anchor', value: 1301 });
+    expect(amt(r, 'water')).toBe(651); // 覆盖为 1g
+  });
+
+  it('ratio：咖啡粉 0.1g、水 1g（非整数场景）', () => {
+    const ings: EngineIngredient[] = [
+      { id: 'coffee', amount: 20, unit: 'g', role: 'anchor', ratioValue: 1 },
+      { id: 'water', amount: 300, unit: 'g', role: 'ratio_linked', ratioValue: 15 },
+    ];
+    // 锁 water=305 → unit=20.333；coffee 20.3(0.1g)、water 305(1g)
+    const r = scaleRatio(ings, { id: 'water', value: 305 });
+    expect(amt(r, 'coffee')).toBe(20.3);
+    expect(amt(r, 'water')).toBe(305);
+  });
+
+  it('multi_ratio：液体 1g、糖 0.1g（非整数场景）', () => {
+    const milkTea: EngineIngredient[] = [
+      {
+        id: 'tea',
+        amount: 5,
+        unit: 'g',
+        role: 'ratio_linked',
+        ratioGroup: 'tea_base',
+        ratioValue: 1,
+      },
+      {
+        id: 'water',
+        amount: 60,
+        unit: 'g',
+        role: 'ratio_linked',
+        ratioGroup: 'tea_base',
+        ratioValue: 12,
+      },
+      { id: 'sugar', amount: 4.8, unit: 'g', role: 'percentage', percentageValue: 8 },
+      { id: 'milk', amount: 18, unit: 'g', role: 'percentage', percentageValue: 30 },
+    ];
+    // 锁 tea=7 → water=84；sugar=84*8%=6.72→6.7；milk=84*30%=25.2
+    const r = scaleMultiRatio(milkTea, {
+      groups: [{ group: 'tea_base', lockedId: 'tea', lockedValue: 7 }],
+      percentBase: { id: 'water' },
+    });
+    expect(amt(r, 'water')).toBe(84); // 液体 1g
+    expect(amt(r, 'sugar')).toBe(6.7); // 糖 0.1g
+    expect(amt(r, 'milk')).toBe(25.2); // 奶 0.1g
+  });
+
+  it('linear_legacy 仍用 roundAmount（≥10 取整，精度未改）', () => {
+    const ings: EngineIngredient[] = [
+      { id: 1, amount: 25.5, unit: 'g', role: 'anchor', scaleType: 'linear' },
+    ];
+    // 25.5 → roundAmount ≥10 取整 = 26（若误用 dp1 会是 25.5）
+    expect(amt(scaleLinearLegacy(ings, 1), 1)).toBe(26);
   });
 });
