@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  HttpException,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -13,13 +15,8 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser, JwtUserPayload } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import {
-  CreateRecipeDto,
-  ListRecipesDto,
-  ParseTextDto,
-  UpdateRecipeDto,
-} from './dto/recipe.dto';
-import { ScaleQueryDto } from './dto/scale.dto';
+import { CreateRecipeDto, ListRecipesDto, ParseTextDto, UpdateRecipeDto } from './dto/recipe.dto';
+import { ScaleQueryDto, ScaleRequestDto } from './dto/scale.dto';
 import { RecipeParseService } from './recipe-parse.service';
 import { RecipesService } from './recipes.service';
 import { ScalingService } from './scaling.service';
@@ -46,9 +43,21 @@ export class RecipesController {
   }
 
   @Get(':id/scale')
-  @ApiOperation({ summary: '动态换算用量（按目标份数）' })
+  @ApiOperation({ summary: '动态换算用量（按目标份数，linear_legacy 兼容）' })
   scale(@Param('id', ParseUUIDPipe) id: string, @Query() query: ScaleQueryDto) {
     return this.scaling.scale(id, query.servings);
+  }
+
+  @Post(':id/scale')
+  @ApiOperation({ summary: '按缩放模型换算（bakers % / 比例 / 多比例，锁定参数）' })
+  async scaleWithProfile(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ScaleRequestDto) {
+    try {
+      return await this.scaling.scaleWithSpec(id, dto.toScaleSpec());
+    } catch (e) {
+      // 引擎守卫（缺 anchor / 除零 NaN / 缺 percentBase 等）→ 400；NotFound 等透传
+      if (e instanceof HttpException) throw e;
+      throw new BadRequestException(e instanceof Error ? e.message : 'scaling failed');
+    }
   }
 
   @Get(':id/versions')
@@ -98,10 +107,7 @@ export class RecipesController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '批量删除菜谱（只能删自己的）' })
-  batchDelete(
-    @CurrentUser() user: JwtUserPayload,
-    @Body() body: { ids: string[] },
-  ) {
+  batchDelete(@CurrentUser() user: JwtUserPayload, @Body() body: { ids: string[] }) {
     return this.service.batchRemove(user.sub, body?.ids ?? [], false);
   }
 }
