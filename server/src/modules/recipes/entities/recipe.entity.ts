@@ -7,11 +7,25 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import type { ScalingProfile } from '../../../common/utils/scaling-engine';
 import { RecipeIngredient } from './recipe-ingredient.entity';
 import { RecipeStep } from './recipe-step.entity';
 
 export type RecipeStatus = 'draft' | 'published' | 'archived';
 export type Difficulty = 'easy' | 'medium' | 'hard';
+export type RecipeType = 'simple' | 'composite';
+
+/**
+ * 基准锚点定义（随 profile 而变；片3 仅落库，暂不被引擎读取）。字段均可选，见 PRD §4.1.3。
+ * 具体形态：烘焙 { anchorIngredientId, anchorIs }；咖啡 { ratio, locked }；奶茶 { ratios }。
+ */
+export interface BaseAnchor {
+  anchorIngredientId?: string | number;
+  anchorIs?: string;
+  ratio?: Record<string, number>;
+  ratios?: Record<string, string | number>;
+  locked?: string;
+}
 
 @Entity('recipes')
 @Index(['authorId'])
@@ -41,6 +55,16 @@ export class Recipe {
 
   @Column({ type: 'int', default: 2 })
   baseServings!: number;
+
+  // --- 缩放引擎（片3）：旧行默认 linear_legacy，行为不变 ---
+  @Column({ type: 'varchar', length: 24, default: 'linear_legacy' })
+  scalingProfile!: ScalingProfile;
+
+  @Column({ type: 'jsonb', nullable: true })
+  baseAnchor!: BaseAnchor | null;
+
+  @Column({ type: 'varchar', length: 16, default: 'simple' })
+  recipeType!: RecipeType;
 
   @Column({ type: 'varchar', length: 16, default: 'medium' })
   difficulty!: Difficulty;
