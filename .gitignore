@@ -6,3 +6,5 @@ dist/
 uploads/
 coverage/
 *.log
+.expo/
+.claude/settings.local.json
