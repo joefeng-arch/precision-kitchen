@@ -13,6 +13,7 @@ import { seedAdmin } from './admin.seed';
 import { seedCategories } from './categories.seed';
 import { seedIngredients } from './ingredients.seed';
 import { seedRecipes } from './recipes.seed';
+import { seedScalingProfileRecipes } from './scaling-profile-recipes.seed';
 
 async function main() {
   const ds = new DataSource({
@@ -34,6 +35,7 @@ async function main() {
     await seedIngredients(ds);
     await seedAdmin(ds);
     await seedRecipes(ds);
+    await seedScalingProfileRecipes(ds);
     console.log('[seed] done');
   } catch (err) {
     console.error('[seed] failed', err);
