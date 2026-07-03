@@ -3,3 +3,8 @@ export { Typography } from './Typography';
 export type { TypographyProps, TypographyVariant } from './Typography';
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant } from './Button';
+export { DoodleDivider } from './DoodleDivider';
+export { Chip } from './Chip';
+export type { ChipProps, ChipTone, ChipShape } from './Chip';
+export { AvatarInitials } from './AvatarInitials';
+export type { AvatarInitialsProps } from './AvatarInitials';

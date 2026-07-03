@@ -12,7 +12,7 @@ export const Colors = {
     text: '#000000',
     background: '#ffffff',
     backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
+    backgroundSelected: '#c6efa1', // secondary-container, matches the active-tab pill in lib/theme/tokens.ts
     textSecondary: '#60646C',
   },
   dark: {
