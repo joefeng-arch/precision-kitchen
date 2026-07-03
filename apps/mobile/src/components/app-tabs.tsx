@@ -1,31 +1,37 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { colors } from '@/lib/theme/tokens';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-
   return (
     <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      backgroundColor={colors.surface}
+      indicatorColor={colors['secondary-container']}
+      labelStyle={{ selected: { color: colors['on-surface'] } }}
+    >
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
-        />
+        <NativeTabs.Trigger.Icon md="home" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
+      <NativeTabs.Trigger name="discover">
+        <NativeTabs.Trigger.Label>Discover</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon md="explore" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="brew">
+        <NativeTabs.Trigger.Label>Brew</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon md="coffee_maker" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="pantry">
+        <NativeTabs.Trigger.Label>Pantry</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon md="inventory_2" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="me">
+        <NativeTabs.Trigger.Label>Me</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon md="person" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );

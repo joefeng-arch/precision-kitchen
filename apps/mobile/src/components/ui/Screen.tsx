@@ -4,7 +4,7 @@ import type { ViewProps } from 'react-native';
 export function Screen({ className, ...props }: ViewProps) {
   return (
     <SafeAreaView
-      className={`flex-1 bg-paper ${className ?? ''}`}
+      className={`flex-1 bg-surface ${className ?? ''}`}
       {...props}
     />
   );

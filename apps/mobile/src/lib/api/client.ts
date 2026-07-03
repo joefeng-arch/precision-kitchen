@@ -9,6 +9,12 @@ export function setAuthTokenGetter(getter: () => string | null) {
   getAuthToken = getter;
 }
 
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body != null && !headers.has('Content-Type')) {
@@ -23,6 +29,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   const payload = await response.json();
 
   if (!response.ok || (typeof payload?.code === 'number' && payload.code >= 400)) {
+    if (payload?.code === 401) onUnauthorized?.();
     throw new ApiClientError(payload as ApiError);
   }
 
