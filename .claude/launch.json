@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--dir", "apps/mobile", "exec", "expo", "start", "--web"],
       "port": 8081
+    },
+    {
+      "name": "server",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "server", "run", "start:dev"],
+      "port": 3001
     }
   ]
 }

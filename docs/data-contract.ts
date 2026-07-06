@@ -55,13 +55,19 @@ export interface ScalingCorrection {
   rules: Array<{ above_factor: number; multiply: number }>;
 }
 
-/** 基准锚点定义（jsonb，随 profile 而变，字段均可选） */
+/**
+ * 基准锚点定义（jsonb，随 profile 而变，字段均可选）。
+ * multi_ratio 的 percentBase：作者指定 percentage 原料的基准，与 scale 请求体的
+ * PercentBase 同构 —— { group } 为组内成员用量之和，{ id } 为单个 ingredient 的用量
+ * （如奶茶：糖按热水）。前端读取此字段构造 scale 请求，不再自行猜测/硬编码基准。
+ */
 export interface BaseAnchor {
   anchorIngredientId?: string | number;
   anchorIs?: string;
   ratio?: Record<string, number>;
   ratios?: Record<string, string | number>;
   locked?: string;
+  percentBase?: PercentBase;
 }
 
 // ─── 2. 实体 ───────────────────────────────────────────────────

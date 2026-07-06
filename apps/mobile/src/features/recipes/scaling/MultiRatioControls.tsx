@@ -6,7 +6,7 @@ import { ApiClientError } from '@/lib/api/errors';
 import { useScaleRecipe } from '@/lib/api/hooks/useScaleRecipe';
 import type { RecipeDetail } from '@/lib/api/types';
 
-import { buildMultiRatioRequest } from './buildScaleRequest';
+import { buildMultiRatioRequest, percentBaseLabel, resolvePercentBase } from './buildScaleRequest';
 import { RatioRuler } from './RatioRuler';
 import { ScaledIngredientList } from './ScaledIngredientList';
 
@@ -17,6 +17,9 @@ export function MultiRatioControls({ recipe }: { recipe: RecipeDetail }) {
   const groups = Array.from(new Set(linkedIngredients.map((i) => i.ratioGroup as string)));
   const percentageIngredients = recipe.ingredients.filter((i) => i.scalingRole === 'percentage');
   const mutation = useScaleRecipe();
+
+  const percentBase = percentageIngredients.length > 0 ? resolvePercentBase(recipe, groups) : undefined;
+  const percentBaseLabelText = percentBaseLabel(percentBase, recipe.ingredients);
 
   const firstMemberByGroup = new Map(
     groups.map((g) => [g, linkedIngredients.find((i) => i.ratioGroup === g)!]),
@@ -43,9 +46,6 @@ export function MultiRatioControls({ recipe }: { recipe: RecipeDetail }) {
         { lockedId: firstMemberByGroup.get(g)!.id, lockedValue: nextValues[g] },
       ]),
     );
-    // percentBase defaults to the first group — a recipe-authoring-time intent that
-    // shouldn't vary per drag; see plan §3 rationale for not exposing a picker.
-    const percentBase = percentageIngredients.length > 0 ? { group: groups[0] } : undefined;
     mutation.mutate({ id: recipe.id, body: buildMultiRatioRequest(groupLocks, percentBase) });
   };
 
@@ -59,14 +59,14 @@ export function MultiRatioControls({ recipe }: { recipe: RecipeDetail }) {
     badgeById.set(member.id, { label: `LOCKED · ${g}`, tone: 'tertiarySoft' });
   }
   for (const p of percentageIngredients) {
-    badgeById.set(p.id, { label: `PCT OF ${groups[0]}`, tone: 'surfaceContainer' });
+    badgeById.set(p.id, { label: `PCT OF ${percentBaseLabelText}`, tone: 'surfaceContainer' });
   }
 
   return (
     <View className="gap-6">
       {percentageIngredients.length > 0 && (
         <Typography variant="bodyMd" className="text-on-surface-variant">
-          Percentages calculated against: {groups[0]}
+          Percentages calculated against: {percentBaseLabelText}
         </Typography>
       )}
       {groups.map((g) => {

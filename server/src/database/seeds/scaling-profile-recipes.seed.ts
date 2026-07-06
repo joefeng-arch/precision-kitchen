@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Recipe } from '../../modules/recipes/entities/recipe.entity';
 import { RecipeIngredient } from '../../modules/recipes/entities/recipe-ingredient.entity';
 import { RecipeStep } from '../../modules/recipes/entities/recipe-step.entity';
@@ -28,6 +28,8 @@ interface SeedRecipe {
   baseServings: number;
   ingredients: SeedIngredient[];
   steps: string[];
+  /** multi_ratio：作者指定 percentBase 基准的原料 customName，落库为 baseAnchor.percentBase.id */
+  percentBaseAnchor?: string;
 }
 
 const RECIPES: SeedRecipe[] = [
@@ -57,7 +59,7 @@ const RECIPES: SeedRecipe[] = [
   },
   {
     title: '[测试] 珍珠奶茶',
-    description: 'multi_ratio 测试配方：tea_base 组（茶:水 1:4）联动，糖按 tea_base 组总量的百分比联动。',
+    description: 'multi_ratio 测试配方：tea_base 组（茶:水 1:4）联动，糖按热水量的百分比联动（非组总量）。',
     scalingProfile: 'multi_ratio',
     baseServings: 1,
     ingredients: [
@@ -65,9 +67,27 @@ const RECIPES: SeedRecipe[] = [
       { customName: '热水', amount: '400', unit: 'g', scalingRole: 'ratio_linked', ratioGroup: 'tea_base', ratioValue: '4', groupName: '主料' },
       { customName: '糖', amount: '40', unit: 'g', scalingRole: 'percentage', percentageValue: '10', groupName: '调味' },
     ],
+    percentBaseAnchor: '热水',
     steps: ['热水冲泡茶叶，浸泡 5 分钟后滤出茶汤。', '按比例加入糖，趁热搅拌至溶解。', '加入珍珠和冰块即可。'],
   },
 ];
+
+/** 按 customName 找到已落库的原料，把其真实 id 写入 recipe.baseAnchor.percentBase */
+async function applyPercentBaseAnchor(
+  recipeRepo: Repository<Recipe>,
+  recipeId: string,
+  anchorName: string,
+  ingredients: RecipeIngredient[],
+): Promise<void> {
+  const anchor = ingredients.find((i) => i.customName === anchorName);
+  if (!anchor) {
+    console.warn(
+      `[seed:scaling-profile-recipes] percentBaseAnchor "${anchorName}" not found for recipe ${recipeId}, skipping`,
+    );
+    return;
+  }
+  await recipeRepo.update(recipeId, { baseAnchor: { percentBase: { id: anchor.id } } });
+}
 
 async function ensureSeedAuthor(ds: DataSource): Promise<string> {
   const userRepo = ds.getRepository(User);
@@ -97,6 +117,10 @@ export async function seedScalingProfileRecipes(ds: DataSource): Promise<void> {
     const exists = await recipeRepo.findOne({ where: { title: data.title, authorId } });
     if (exists) {
       skipped++;
+      if (data.percentBaseAnchor) {
+        const existingIngredients = await riRepo.find({ where: { recipeId: exists.id } });
+        await applyPercentBaseAnchor(recipeRepo, exists.id, data.percentBaseAnchor, existingIngredients);
+      }
       continue;
     }
 
@@ -116,25 +140,32 @@ export async function seedScalingProfileRecipes(ds: DataSource): Promise<void> {
       }),
     );
 
+    const savedIngredients: RecipeIngredient[] = [];
     for (let i = 0; i < data.ingredients.length; i++) {
       const item = data.ingredients[i];
-      await riRepo.save(
-        riRepo.create({
-          recipeId: recipe.id,
-          ingredientId: null,
-          customName: item.customName,
-          amount: item.amount,
-          unit: item.unit,
-          scaleType: 'linear',
-          scaleFactor: '0.70',
-          groupName: item.groupName ?? null,
-          scalingRole: item.scalingRole ?? null,
-          percentageValue: item.percentageValue ?? null,
-          ratioGroup: item.ratioGroup ?? null,
-          ratioValue: item.ratioValue ?? null,
-          sort: i * 10,
-        }),
+      savedIngredients.push(
+        await riRepo.save(
+          riRepo.create({
+            recipeId: recipe.id,
+            ingredientId: null,
+            customName: item.customName,
+            amount: item.amount,
+            unit: item.unit,
+            scaleType: 'linear',
+            scaleFactor: '0.70',
+            groupName: item.groupName ?? null,
+            scalingRole: item.scalingRole ?? null,
+            percentageValue: item.percentageValue ?? null,
+            ratioGroup: item.ratioGroup ?? null,
+            ratioValue: item.ratioValue ?? null,
+            sort: i * 10,
+          }),
+        ),
       );
+    }
+
+    if (data.percentBaseAnchor) {
+      await applyPercentBaseAnchor(recipeRepo, recipe.id, data.percentBaseAnchor, savedIngredients);
     }
 
     for (let i = 0; i < data.steps.length; i++) {

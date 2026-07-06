@@ -269,6 +269,44 @@ describe('ScalingService.scaleWithSpec (锁定式，分派引擎)', () => {
     expect(byId[34].scaledAmount).toBe(18); // 奶 0.1g
   });
 
+  it('multi_ratio：珍珠奶茶真实种子数据（茶100/热水400/糖10%）→ percentBase 热水 给 40，不是组总量的 50', async () => {
+    const recipe = makeRecipe({ scalingProfile: 'multi_ratio' }, [
+      ing({
+        id: 41,
+        customName: '茶叶',
+        amount: '100.00',
+        scalingRole: 'ratio_linked',
+        ratioGroup: 'tea_base',
+        ratioValue: '1.000',
+      }),
+      ing({
+        id: 42,
+        customName: '热水',
+        amount: '400.00',
+        scalingRole: 'ratio_linked',
+        ratioGroup: 'tea_base',
+        ratioValue: '4.000',
+      }),
+      ing({
+        id: 43,
+        customName: '糖',
+        amount: '40.00',
+        scalingRole: 'percentage',
+        percentageValue: '10.000',
+      }),
+    ]);
+    const r = await svcWith(recipe).scaleWithSpec('r1', {
+      profile: 'multi_ratio',
+      spec: {
+        groups: [{ group: 'tea_base', lockedId: 41, lockedValue: 100 }],
+        percentBase: { id: 42 }, // 热水单项，不是 tea_base 组总量
+      },
+    });
+    const byId = Object.fromEntries(r.ingredients.map((i) => [i.id, i]));
+    expect(byId[42].scaledAmount).toBe(400);
+    expect(byId[43].scaledAmount).toBe(40); // 400 * 10%，若误用组总量(100+400=500)会得到 50
+  });
+
   it('recipe 不存在 → NotFound', async () => {
     await expect(
       svcWith(null).scaleWithSpec('x', { profile: 'linear_legacy', multiplier: 1 }),

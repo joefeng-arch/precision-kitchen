@@ -48,7 +48,9 @@
 | steps | `RecipeStep[]` | **仅详情**（列表不含） |
 
 **BaseAnchor**（jsonb，随 profile 而变，字段均可选）：
-`{ anchorIngredientId?: string|number, anchorIs?: string, ratio?: Record<string,number>, ratios?: Record<string,string|number>, locked?: string }`
+`{ anchorIngredientId?: string|number, anchorIs?: string, ratio?: Record<string,number>, ratios?: Record<string,string|number>, locked?: string, percentBase?: PercentBase }`
+
+`percentBase`（multi_ratio 专用）：作者指定 percentage 原料的基准，与下文 §3 scale 请求体的 `PercentBase` 同构（`{ group }` 组内成员用量之和 / `{ id }` 单个 ingredient 用量，如奶茶糖按热水）。前端读取此字段构造 scale 请求，不再自行猜测/硬编码基准。
 
 ---
 
