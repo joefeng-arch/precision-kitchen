@@ -260,3 +260,32 @@ export interface WhoAmI {
   openid?: string;
   role: UserRole;
 }
+
+// ─── 6. Timers（server/src/modules/timers，未见于 data-contract.md，按源码反推）──
+
+export type TimerStatus = 'running' | 'paused' | 'finished';
+
+/** POST /timers 请求体 */
+export interface CreateTimerRequest {
+  label: string; // 最长 64
+  durationSeconds: number; // 1..21600（6 小时）
+  recipeId?: string; // uuid，关联菜谱
+  stepNumber?: number; // 关联步骤号
+}
+
+/** timers 各接口响应（data）共用形状 */
+export interface TimerView {
+  id: string;
+  userId: string;
+  label: string;
+  durationSeconds: number;
+  startedAt: number; // epoch ms
+  pausedAt: number | null; // epoch ms
+  accumulatedPauseMs: number;
+  status: TimerStatus;
+  recipeId: string | null;
+  stepNumber: number | null;
+  elapsedSeconds: number; // 服务端每次读取时现算
+  remainingSeconds: number; // 服务端每次读取时现算
+  serverTime: number; // epoch ms，用于客户端时钟校准
+}
