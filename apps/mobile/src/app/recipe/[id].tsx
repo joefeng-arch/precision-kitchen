@@ -165,11 +165,19 @@ export default function RecipeDetailScreen() {
             </View>
 
             <Button
+              label="Start Cooking"
+              variant="cta"
+              icon={<MaterialIcons name="play-arrow" size={20} color={colors['on-primary-container']} />}
+              onPress={() => router.push({ pathname: '/brew/[id]/session', params: { id: recipe.id } })}
+              className="mt-8"
+            />
+
+            <Button
               label="Scale this recipe"
               variant="cta"
               icon={<MaterialIcons name="straighten" size={20} color={colors['on-primary-container']} />}
               onPress={() => router.push({ pathname: '/recipe/scale', params: { id: recipe.id } })}
-              className="mt-8"
+              className="mt-3"
             />
           </View>
         </ScrollView>

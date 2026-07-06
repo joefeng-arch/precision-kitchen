@@ -54,6 +54,7 @@ export default function TabLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="recipe/[id]" />
             <Stack.Screen name="recipe/scale" />
+            <Stack.Screen name="brew/[id]/session" />
           </Stack>
         )}
         {authStatus === 'unauthenticated' && <LoginScreen />}
