@@ -18,6 +18,9 @@ export type RecipeType = 'simple' | 'composite';
 /**
  * 基准锚点定义（随 profile 而变；片3 仅落库，暂不被引擎读取）。字段均可选，见 PRD §4.1.3。
  * 具体形态：烘焙 { anchorIngredientId, anchorIs }；咖啡 { ratio, locked }；奶茶 { ratios }。
+ * multi_ratio 的 percentBase：作者指定 percentage 原料的基准，与引擎 MultiRatioSpec.percentBase
+ * 同构 —— { group } 为组内成员用量之和，{ id } 为单个 RecipeIngredient.id 的用量（如奶茶：糖按热水）。
+ * 前端读取此字段构造 scale 请求，不再自行猜测/硬编码基准。
  */
 export interface BaseAnchor {
   anchorIngredientId?: string | number;
@@ -25,6 +28,7 @@ export interface BaseAnchor {
   ratio?: Record<string, number>;
   ratios?: Record<string, string | number>;
   locked?: string;
+  percentBase?: { group: string } | { id: number | string };
 }
 
 @Entity('recipes')
