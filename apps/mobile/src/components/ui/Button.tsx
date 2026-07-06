@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { Pressable, type PressableProps } from 'react-native';
+import { Pressable, Text, type PressableProps } from 'react-native';
 
-import { Typography } from './Typography';
+import { colors, fonts, fontSizes } from '@/lib/theme/tokens';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'cta';
 
@@ -17,17 +17,37 @@ const variantContainerClassName: Record<ButtonVariant, string> = {
   cta: 'bg-primary-container rounded-xl px-6 min-h-[64px]',
 };
 
-const variantLabelClassName: Record<ButtonVariant, string> = {
-  primary: 'text-on-primary-container',
-  secondary: 'text-on-surface',
-  cta: 'text-on-primary-container',
+/**
+ * Plain <Text> with inline styles — NOT Typography's className path. Typography
+ * bakes `text-on-surface` into every variant, and NativeWind resolves conflicting
+ * classes by first-compiled-in-the-app order, not string position, so an
+ * appended `text-on-primary-container` override does not reliably win (verified
+ * live: labels rendered on-surface's #1c1c18 instead of the intended
+ * on-primary-container #4b2600). Same workaround as features/brew/DarkText.tsx.
+ */
+const variantLabelStyle: Record<
+  ButtonVariant,
+  { fontFamily: string; fontSize: number; lineHeight: number; color: string }
+> = {
+  primary: {
+    fontFamily: fonts.bodyMd,
+    fontSize: fontSizes.bodyMd.fontSize,
+    lineHeight: fontSizes.bodyMd.lineHeight,
+    color: colors['on-primary-container'],
+  },
+  secondary: {
+    fontFamily: fonts.bodyMd,
+    fontSize: fontSizes.bodyMd.fontSize,
+    lineHeight: fontSizes.bodyMd.lineHeight,
+    color: colors['on-surface'],
+  },
+  cta: {
+    fontFamily: fonts.headlineMd,
+    fontSize: fontSizes.headlineMd.fontSize,
+    lineHeight: fontSizes.headlineMd.lineHeight,
+    color: colors['on-primary-container'],
+  },
 };
-
-const variantLabelVariant = {
-  primary: 'bodyMd',
-  secondary: 'bodyMd',
-  cta: 'headlineMd',
-} as const;
 
 export function Button({ variant = 'primary', label, icon, className, ...props }: ButtonProps) {
   return (
@@ -36,9 +56,7 @@ export function Button({ variant = 'primary', label, icon, className, ...props }
       {...props}
     >
       {icon}
-      <Typography variant={variantLabelVariant[variant]} className={variantLabelClassName[variant]}>
-        {label}
-      </Typography>
+      <Text style={variantLabelStyle[variant]}>{label}</Text>
     </Pressable>
   );
 }
