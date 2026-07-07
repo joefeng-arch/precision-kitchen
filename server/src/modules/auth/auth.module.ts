@@ -6,6 +6,8 @@ import { AUTH_PROVIDERS } from '../../common/interfaces/auth-provider.interface'
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AppleAuthProvider } from './providers/apple-auth.provider';
+import { GoogleAuthProvider } from './providers/google-auth.provider';
 import { MockAuthProvider } from './providers/mock-auth.provider';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
@@ -32,9 +34,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     // ── Auth Providers ──────────────────────────────────────
     // 每个 provider 先作为普通 class 注册（NestJS 管理其生命周期）
     MockAuthProvider, // 本地 dev 登录，受 ALLOW_MOCK_LOGIN 控制
-    // 添加新登录方式：
-    //   AppleAuthProvider,
-    //   GoogleAuthProvider,
+    AppleAuthProvider, // Apple 登录，校验 identityToken（APPLE_CLIENT_ID）
+    GoogleAuthProvider, // Google 登录，校验 idToken（GOOGLE_*_CLIENT_ID）
 
     // 聚合所有 providers 为数组注入到 AuthService
     {
@@ -42,9 +43,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       useFactory: (...providers: InstanceType<any>[]) => providers,
       inject: [
         MockAuthProvider,
-        // 新增 provider 时在此追加：
-        // AppleAuthProvider,
-        // GoogleAuthProvider,
+        AppleAuthProvider,
+        GoogleAuthProvider,
+        // 新增 provider 时在此追加
       ],
     },
   ],

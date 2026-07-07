@@ -243,7 +243,7 @@ export interface MockLoginRequest {
 
 /** POST /auth/login（通用） */
 export interface LoginRequest {
-  provider: string; // 'wechat' | 'apple' | 'google' | 'mock' ...
+  provider: 'wechat' | 'apple' | 'google' | 'mock';
   code: string;
   nickname?: string;
   avatar?: string;
