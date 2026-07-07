@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { mockLogin, whoami } from '@/lib/api/auth';
+import { login, mockLogin, whoami } from '@/lib/api/auth';
 import { setAuthTokenGetter, setUnauthorizedHandler } from '@/lib/api/client';
 import type { LoginResult } from '@/lib/api/types';
 
@@ -17,6 +17,11 @@ interface AuthState {
   token: string | null;
   bootstrap: () => Promise<void>;
   loginWithMock: (nickname?: string) => Promise<void>;
+  loginWithOAuth: (
+    provider: 'apple' | 'google',
+    code: string,
+    profile?: { nickname?: string; avatar?: string },
+  ) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -47,6 +52,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   loginWithMock: async (nickname?: string) => {
     const result = await mockLogin(nickname ? { nickname } : {});
+    await setSecureItem(TOKEN_KEY, result.token);
+    await setSecureItem(USER_KEY, JSON.stringify(result.user));
+    setAuthTokenGetter(() => result.token);
+    set({ status: 'authenticated', user: result.user, token: result.token });
+  },
+
+  loginWithOAuth: async (provider, code, profile) => {
+    const result = await login({ provider, code, ...profile });
     await setSecureItem(TOKEN_KEY, result.token);
     await setSecureItem(USER_KEY, JSON.stringify(result.user));
     setAuthTokenGetter(() => result.token);

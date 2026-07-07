@@ -185,6 +185,18 @@ Body：`{ code?: string, nickname?: string, avatar?: string }`
 ### `POST /auth/login`（通用）
 Body：`{ provider: string, code: string, nickname?: string, avatar?: string }`
 
+已注册 provider：`'mock' | 'apple' | 'google'`（未注册值 → 401）。
+
+**`code` 按 provider 语义不同**（字段名叫 code，但 apple/google 传的是 ID token，不是授权码）：
+- `apple` → identityToken（JWT，服务端按 `APPLE_CLIENT_ID` 校验签名/aud/exp）
+- `google` → idToken（JWT，服务端按 `GOOGLE_{IOS,ANDROID,WEB}_CLIENT_ID` 白名单校验）
+- `mock` → 用户种子（同 code → 同用户）
+
+**Apple 首次登录特殊约定**：Apple 仅在用户**首次授权**时返回姓名（identityToken 里永远不含
+name claim）。客户端必须在首次授权响应里取到 fullName 并作为 `nickname` 随本次 login 传给
+后端；后续登录不传 `nickname`（服务端不会覆盖已存昵称）。Google 无此问题（idToken 自带
+name/picture，服务端自动提取，客户端可用 `nickname`/`avatar` 覆盖）。
+
 **两者 Response（`data`）相同**：
 ```jsonc
 {
