@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -6,6 +7,8 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, ILike, In, Repository } from 'typeorm';
 import { paginate } from '../../common/dto/pagination.dto';
+import type { ScalingProfile } from '../../common/utils/scaling-engine';
+import { collectScalingErrors } from './parse-scaling-validator';
 import { Category } from '../categories/entities/category.entity';
 import { Ingredient } from '../ingredients/entities/ingredient.entity';
 import { User } from '../users/entities/user.entity';
@@ -99,6 +102,9 @@ export class RecipesService {
   }
 
   async create(authorId: string, dto: CreateRecipeDto): Promise<RecipeWithExtras> {
+    const profile: ScalingProfile = dto.scalingProfile ?? 'linear_legacy';
+    this.assertScalingConsistent(profile, dto.ingredients, dto.baseAnchor);
+
     return this.ds.transaction(async (mgr) => {
       const recipe = mgr.create(Recipe, {
         authorId,
@@ -113,10 +119,12 @@ export class RecipesService {
         status: dto.status ?? 'draft',
         isPublic: dto.isPublic ?? false,
         tags: dto.tags ?? [],
+        scalingProfile: profile,
         versionCount: 1,
       });
       const saved = await mgr.save(recipe);
-      await this.replaceChildren(mgr, saved.id, dto.ingredients, dto.steps);
+      const savedIngs = await this.replaceChildren(mgr, saved.id, dto.ingredients, dto.steps, profile);
+      await this.remapBaseAnchor(mgr, saved.id, dto.baseAnchor, savedIngs);
       await this.replaceCategories(
         mgr,
         saved.id,
@@ -142,6 +150,17 @@ export class RecipesService {
         throw new ForbiddenException('Not your recipe');
       }
 
+      // 缩放配置与 ingredients 强绑定：children 重插会换 ingredient id，
+      // 任何 id 形 percentBase 若不随 ingredients 一并提交必然悬垂。
+      // （单独把 scalingProfile 降级为 linear_legacy 是允许的。）
+      if (
+        dto.ingredients === undefined &&
+        (dto.baseAnchor !== undefined ||
+          (dto.scalingProfile !== undefined && dto.scalingProfile !== 'linear_legacy'))
+      ) {
+        throw new BadRequestException('缩放配置必须与 ingredients 一并提交');
+      }
+
       // 只 patch 显式给出的列；用 mgr.update 不触发 @OneToMany cascade
       const patchable = [
         'title',
@@ -155,6 +174,7 @@ export class RecipesService {
         'status',
         'isPublic',
         'tags',
+        'scalingProfile',
       ] as const;
       const dtoRec = dto as unknown as Record<string, unknown>;
       const updateFields: Record<string, unknown> = {};
@@ -164,18 +184,46 @@ export class RecipesService {
 
       if (dto.ingredients !== undefined || dto.steps !== undefined) {
         // 任一给出就走 replace；未给出的一侧从 DB 现状映射回 DTO 形态
+        const effectiveProfile: ScalingProfile =
+          dto.scalingProfile ?? recipe.scalingProfile ?? 'linear_legacy';
+        if (dto.ingredients !== undefined) {
+          this.assertScalingConsistent(effectiveProfile, dto.ingredients, dto.baseAnchor);
+        }
+
         const existingIngs = dto.ingredients === undefined
           ? await mgr.find(RecipeIngredient, { where: { recipeId: id } })
           : null;
         const existingSteps = dto.steps === undefined
           ? await mgr.find(RecipeStep, { where: { recipeId: id } })
           : null;
-        await this.replaceChildren(
+        const savedIngs = await this.replaceChildren(
           mgr,
           recipe.id,
           dto.ingredients ?? existingIngs!.map(this.riToDto),
           dto.steps ?? existingSteps!.map(this.stepToDto),
+          effectiveProfile,
         );
+
+        if (dto.ingredients !== undefined) {
+          // 新 ingredients：baseAnchor 一并重发则重映射；否则旧引用不再可信 → 置 null
+          await this.remapBaseAnchor(mgr, recipe.id, dto.baseAnchor, savedIngs, {
+            clearWhenAbsent: true,
+          });
+        } else if (existingIngs) {
+          // steps-only 往返重插：已存 id 形 percentBase 按位置映射到新 id（group 形保留）
+          const pb = recipe.baseAnchor?.percentBase;
+          if (pb && 'id' in pb) {
+            const pos = existingIngs.findIndex((r) => r.id === pb.id);
+            await mgr.update(
+              Recipe,
+              { id: recipe.id },
+              {
+                baseAnchor:
+                  pos >= 0 ? { percentBase: { id: savedIngs[pos].id } } : null,
+              },
+            );
+          }
+        }
       }
 
       if (dto.categoryIds !== undefined) {
@@ -288,6 +336,12 @@ export class RecipesService {
     groupName: ri.groupName ?? undefined,
     notes: ri.notes ?? undefined,
     sort: ri.sort,
+    // 缩放字段必须参与往返，否则 steps-only 更新会把它们静默清空
+    scalingRole: ri.scalingRole ?? undefined,
+    percentageValue: ri.percentageValue != null ? parseFloat(ri.percentageValue) : undefined,
+    ratioGroup: ri.ratioGroup ?? undefined,
+    ratioValue: ri.ratioValue != null ? parseFloat(ri.ratioValue) : undefined,
+    roundDp: ri.roundDp ?? undefined,
   });
 
   private stepToDto = (s: RecipeStep): RecipeStepDto => ({
@@ -298,15 +352,21 @@ export class RecipesService {
     tips: s.tips ?? undefined,
   });
 
+  /** 返回保存后的 ingredients（含分配的 id，供 baseAnchor 下标→id 重映射） */
   private async replaceChildren(
     mgr: import('typeorm').EntityManager,
     recipeId: string,
     ingredients: RecipeIngredientDto[],
     steps: RecipeStepDto[],
-  ) {
+    profile: ScalingProfile,
+  ): Promise<RecipeIngredient[]> {
     await mgr.delete(RecipeIngredient, { recipeId });
     await mgr.delete(RecipeStep, { recipeId });
 
+    // linear_legacy 不使用缩放字段：强制剥离，避免惰性脏数据误导前端工作台
+    const scaling = profile === 'linear_legacy' ? null : profile;
+
+    let savedIngs: RecipeIngredient[] = [];
     if (ingredients.length) {
       const entities = ingredients.map((i, idx) =>
         mgr.create(RecipeIngredient, {
@@ -320,9 +380,15 @@ export class RecipesService {
           groupName: i.groupName ?? null,
           notes: i.notes ?? null,
           sort: i.sort ?? idx,
+          scalingRole: scaling ? (i.scalingRole ?? null) : null,
+          percentageValue:
+            scaling && i.percentageValue != null ? i.percentageValue.toFixed(3) : null,
+          ratioGroup: scaling ? (i.ratioGroup ?? null) : null,
+          ratioValue: scaling && i.ratioValue != null ? i.ratioValue.toFixed(3) : null,
+          roundDp: scaling ? (i.roundDp ?? null) : null,
         }),
       );
-      await mgr.save(entities);
+      savedIngs = await mgr.save(entities);
     }
 
     if (steps.length) {
@@ -338,6 +404,54 @@ export class RecipesService {
       );
       await mgr.save(entities);
     }
+    return savedIngs;
+  }
+
+  /** 保存时缩放结构强校验：不一致直接 400（显式保存脏数据是客户端错误，不静默降级） */
+  private assertScalingConsistent(
+    profile: ScalingProfile,
+    ingredients: RecipeIngredientDto[],
+    baseAnchor?: { percentBase?: { ingredientIndex?: number; group?: string } },
+  ) {
+    const errors = collectScalingErrors(
+      profile,
+      ingredients.map((i) => ({
+        scalingRole: i.scalingRole ?? null,
+        percentageValue: i.percentageValue ?? null,
+        ratioGroup: i.ratioGroup ?? null,
+        ratioValue: i.ratioValue ?? null,
+        amount: i.amount,
+      })),
+      baseAnchor?.percentBase ?? null,
+    );
+    if (errors.length > 0) {
+      throw new BadRequestException(`缩放配置不一致：${errors.join('；')}`);
+    }
+  }
+
+  /**
+   * baseAnchor 下标→id 重映射（照种子模式：ingredients 插入后回写）。
+   * clearWhenAbsent：ingredients 被整体替换而 baseAnchor 未重发时，旧引用（id 已换）不再可信 → 置 null。
+   */
+  private async remapBaseAnchor(
+    mgr: import('typeorm').EntityManager,
+    recipeId: string,
+    baseAnchor: { percentBase?: { ingredientIndex?: number; group?: string } } | undefined,
+    savedIngs: RecipeIngredient[],
+    opts?: { clearWhenAbsent?: boolean },
+  ) {
+    const pb = baseAnchor?.percentBase;
+    if (!pb) {
+      if (opts?.clearWhenAbsent) {
+        await mgr.update(Recipe, { id: recipeId }, { baseAnchor: null });
+      }
+      return;
+    }
+    const value =
+      pb.ingredientIndex != null
+        ? { percentBase: { id: savedIngs[pb.ingredientIndex].id } }
+        : { percentBase: { group: pb.group as string } };
+    await mgr.update(Recipe, { id: recipeId }, { baseAnchor: value });
   }
 
   private async replaceCategories(

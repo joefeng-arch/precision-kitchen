@@ -52,6 +52,14 @@
 
 `percentBase`（multi_ratio 专用）：作者指定 percentage 原料的基准，与下文 §3 scale 请求体的 `PercentBase` 同构（`{ group }` 组内成员用量之和 / `{ id }` 单个 ingredient 用量，如奶茶糖按热水）。前端读取此字段构造 scale 请求，不再自行猜测/硬编码基准。
 
+**写入（AI 导入切片起）**：`scalingProfile` / `baseAnchor` 现可经 `POST /recipes`、`PATCH /recipes/:id` 提交。
+提交时 `baseAnchor.percentBase` 用 **`{ ingredientIndex }`**（ingredients 数组下标，0 起）或 `{ group }`——
+保存前没有 DB id，服务端在插入 ingredients 后把下标重映射为真实 `{ id }` 落库。规则：
+- 缩放结构不自洽（如 bakers 无 anchor、multi_ratio 有 percentage 料但 percentBase 解析不了）→ **400**。
+- **update 时缩放配置必须与 `ingredients` 一并提交**（children 重插会换 id，否则 id 形 percentBase 必悬垂）→ 违反 400；单独把 `scalingProfile` 降级为 `linear_legacy` 允许。
+- 重发 ingredients 而未重发 baseAnchor 且校验通过（无 percentage 料）→ 已存 baseAnchor 被置 null。
+- steps-only 更新：服务端自动按位置把已存 id 形 percentBase 重映射到重插后的新 id，调用方无感。
+
 ---
 
 ## 2. RecipeIngredient 实体全字段
@@ -78,6 +86,12 @@
 | name | `string \| null` | **仅详情注入**（customName 或公共食材名） |
 
 **RecipeStep**（详情内）：`{ id:number, recipeId:string, stepNumber:number, description:string, imageUrl:string|null, durationSeconds:number|null, tips:string|null }`
+
+**写入（AI 导入切片起）**：`scalingRole` / `percentageValue` / `ratioGroup` / `ratioValue` / `roundDp` 现可经
+create/update 的 ingredient 项提交（数值按 number 传，服务端存 decimal 字符串）。`scalingProfile`
+为 `linear_legacy` 时上述字段保存时被强制剥离为 null（DB 卫生）。
+已知缺口：`correction`（非线性修正 jsonb）不在 DTO 内，且 steps-only 更新的 children 往返会将其清空——
+当前无任何数据使用该字段，留待 correction 创作入口切片一并处理。
 
 ---
 
@@ -198,3 +212,45 @@ Body：`{ provider: string, code: string, nickname?: string, avatar?: string }`
 ```jsonc
 { "sub": "uuid", "openid": "string | 省略", "role": "user" | "vip" }
 ```
+
+---
+
+## 8. AI 智能导入：`POST /recipes/parse-text`
+
+需 `Authorization: Bearer <token>`；限流 **5 次/分钟**/用户（管理端 `POST /admin/recipes/parse-text` 不限流）。
+Body：`{ text: string }`（20–5000 字）。
+
+**Response（`data`）**：解析**草稿**，不入库——用户确认后另行 `POST /recipes` 保存。
+
+```jsonc
+{
+  "parsed": true,
+  "confidence": "high" | "medium" | "low",
+  "warnings": ["缩放：原料「水」角色不明确，已按百分比联动处理"],  // 恒在；干净时 []
+  "originalText": "…",
+  "recipe": {
+    "title": "乡村面包", "description": "…", "totalMinutes": 180,
+    "baseServings": 2, "difficulty": "medium",
+    "scalingProfile": "bakers_percentage",          // 恒在；四值之一
+    "baseAnchor": { "percentBase": { "ingredientIndex": 1 } } | null,  // 仅 multi_ratio 有 percentage 料时非 null
+    "ingredients": [
+      { "name": "高筋面粉", "amount": 500, "unit": "g", "groupName": "主料", "scaleType": "linear",
+        "scalingRole": "anchor", "percentageValue": 100, "ratioGroup": null, "ratioValue": null }
+    ],
+    "steps": [ { "stepNumber": 1, "description": "…", "durationSeconds": null } ]
+  }
+}
+```
+
+**缩放字段语义**：
+- AI 只做**分类**（profile / 角色 / 分组 / percentBase 指向）；`percentageValue`/`ratioValue` 由服务端从
+  amount **确定性重算**（3 位小数），AI 的算术不进入结果。仅当原料无用量而文本给了比例/百分比表述时
+  采用 AI 提示值，并附 warning、confidence 降档。
+- 缩放分类不自洽（bakers 无 anchor、multi_ratio percentage 料缺 percentBase 等）→ **不报错**：
+  整体降级 `scalingProfile:"linear_legacy"`、缩放字段全 null、warnings 说明原因、confidence 强制 low。
+  基础解析结果仍可用。
+- confidence 联动：缩放有纠偏 → 封顶 medium；整体降级 → 强制 low。
+- `baseAnchor.percentBase.ingredientIndex` 是 ingredients 数组下标——确认后把整个 recipe 原样提交
+  `POST /recipes` 即可，服务端负责下标→id 重映射（见 §1）。
+
+失败场景：文本不完整（缺标题/食材/步骤）→ 400；AI 服务不可用 → 400；超限流 → 429。

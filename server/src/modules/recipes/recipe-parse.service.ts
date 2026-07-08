@@ -8,6 +8,11 @@ import {
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import type { ScalingProfile, ScalingRole } from '../../common/utils/scaling-engine';
+import {
+  ParsedPercentBase,
+  validateAndRecomputeScaling,
+} from './parse-scaling-validator';
 
 export interface ParsedIngredient {
   name: string;
@@ -15,6 +20,11 @@ export interface ParsedIngredient {
   unit: string;
   groupName: string;
   scaleType: string;
+  /** 缩放字段：linear_legacy 下全为 null；数值由服务端从 amount 重算，非 AI 输出 */
+  scalingRole: ScalingRole | null;
+  percentageValue: number | null;
+  ratioGroup: string | null;
+  ratioValue: number | null;
 }
 
 export interface ParsedStep {
@@ -30,14 +40,27 @@ export interface ParsedRecipe {
   difficulty: string;
   totalMinutes?: number;
   baseServings: number;
+  scalingProfile: ScalingProfile;
+  /** percentBase 以 ingredients 数组下标指代（保存前无 DB id），保存时由服务端重映射 */
+  baseAnchor: { percentBase: ParsedPercentBase } | null;
   ingredients: ParsedIngredient[];
   steps: ParsedStep[];
+}
+
+export interface ParseTextResult {
+  parsed: boolean;
+  confidence: 'high' | 'medium' | 'low';
+  recipe: ParsedRecipe;
+  /** 缩放分类的纠偏/降级说明（确认页展示）；干净时为 [] */
+  warnings: string[];
+  originalText: string;
 }
 
 const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 60 * 1000;
 
-const SYSTEM_PROMPT = `你是一个专业的厨师助手，擅长从非结构化的菜谱文本中提取结构化信息。
+const SYSTEM_PROMPT = `你是一个专业的厨师助手，擅长从非结构化的菜谱文本中提取结构化信息，并判断配方的缩放模式。
+输入可能是中文、英文或中英混合；title、食材 name 保留原文语言，枚举字段一律使用下方规定值。
 
 请将用户提供的菜谱文本解析为以下 JSON 格式（仅输出 JSON，不要有任何其他说明文字）：
 
@@ -47,13 +70,19 @@ const SYSTEM_PROMPT = `你是一个专业的厨师助手，擅长从非结构化
   "totalMinutes": 30,
   "baseServings": 2,
   "difficulty": "easy",
+  "scalingProfile": "linear_legacy",
+  "percentBase": null,
   "ingredients": [
     {
       "name": "食材名称",
       "amount": 500,
       "unit": "g",
       "groupName": "主料",
-      "scaleType": "linear"
+      "scaleType": "linear",
+      "scalingRole": null,
+      "ratioGroup": null,
+      "ratioHint": null,
+      "percentHint": null
     }
   ],
   "steps": [
@@ -65,13 +94,50 @@ const SYSTEM_PROMPT = `你是一个专业的厨师助手，擅长从非结构化
   ]
 }
 
-规则：
+基础规则：
 1. difficulty 只能是 "easy"、"medium"、"hard" 之一，默认 "medium"
-2. 对于"适量"、"少许"、"适量"等模糊用量：amount 填 0，unit 填 "适量"
+2. 对于"适量"、"少许"等模糊用量：amount 填 0，unit 填 "适量"
 3. groupName 根据食材角色分组：主料、调料、腌料、配料
 4. scaleType：调味料/调料用 "sub_linear"，固定用量（如泡打粉）用 "fixed"，其余用 "linear"
 5. steps 中有明确计时（如"炒3分钟"→180，"煮10分钟"→600）时填 durationSeconds，否则填 null
-6. totalMinutes 为整个菜谱的估计烹饪总时间（分钟），没有时可不填`;
+6. totalMinutes 为整个菜谱的估计烹饪总时间（分钟），没有时可不填
+
+缩放模式（scalingProfile）判定规则：
+7. 按配方类型选择，拿不准时一律用 "linear_legacy"（宁可保守，不要乱标）：
+   - "bakers_percentage"：烘焙面团类（面包/吐司/披萨/贝果/bread/dough/sourdough 等以面粉为主体）
+   - "ratio_based"：两种核心原料按固定比例（手冲咖啡/pour-over、茶水比，常见 "1:15" 式表述），
+     且配方中所有原料都参与该比例时才可用
+   - "multi_ratio"：多组分比例饮品/调酒（奶茶/鸡尾酒），存在一组或多组"份数比"，
+     可能另有按某液体量百分比投放的原料（糖/奶）
+   - "linear_legacy"：普通家常菜或无明显比例结构
+8. scalingRole 按 profile 填写（linear_legacy 时全部填 null）：
+   - bakers_percentage：主体面粉唯一一个 "anchor"；随面粉量联动的原料 "percentage"；
+     不随量的（装饰、模具用油、"适量"原料）"fixed"
+   - ratio_based：比例的基准端（如咖啡粉）"anchor"，另一端 "ratio_linked"
+   - multi_ratio：每个比例组的成员都填 "ratio_linked" 并给同一 ratioGroup（英文短名，如
+     "tea_base"、"mix"）；按液体量百分比投放的原料填 "percentage"；不参与联动的（冰块、
+     "适量"原料）填 "fixed"
+9. 不要自行计算百分比或比例数值，服务器会根据 amount 重新计算。仅当文本给出了比例/百分比
+   但没有给具体克数时才填提示值：
+   - ratioHint：如"咖啡与水 1:15"但无克数 → 咖啡 ratioHint=1、水 ratioHint=15
+   - percentHint：如"糖为水量的 10%"但无克数 → 糖 percentHint=10
+10. percentBase：仅 multi_ratio 且存在 "percentage" 原料时必填，其余情况填 null。
+    形如 {"ingredientIndex": 1}（ingredients 数组下标，从 0 开始，必须指向某个 ratio_linked
+    原料）或 {"group": "组名"}（以该组全部成员用量之和为基准）。
+    例如"糖按热水量的 10%"→ 指向"热水"的下标。
+11. anchor 必须唯一。角色划分不清、找不到 anchor 时，scalingProfile 整体退回 "linear_legacy"。
+
+示例（仅节选相关字段）：
+示例1 输入：高筋面粉500g、水325g、盐10g、酵母5g …（面包做法）
+输出：scalingProfile="bakers_percentage"，percentBase=null，
+  面粉 scalingRole="anchor"；水、盐、酵母 scalingRole="percentage"
+示例2 输入：咖啡粉20g，水300g，粉水比1:15 …（手冲做法）
+输出：scalingProfile="ratio_based"，percentBase=null，
+  咖啡粉 scalingRole="anchor"，水 scalingRole="ratio_linked"（有克数，ratioHint 不填）
+示例3 输入：茶叶100g，热水400g冲泡，糖为热水量的10%（40g），珍珠适量 …
+输出：scalingProfile="multi_ratio"，percentBase={"ingredientIndex":1}，
+  茶叶/热水 scalingRole="ratio_linked"、ratioGroup="tea_base"；
+  糖 scalingRole="percentage"；珍珠 amount=0、unit="适量"、scalingRole="fixed"`;
 
 @Injectable()
 export class RecipeParseService {
@@ -105,12 +171,7 @@ export class RecipeParseService {
     userId: string,
     text: string,
     options?: { skipRateLimit?: boolean },
-  ): Promise<{
-    parsed: boolean;
-    confidence: 'high' | 'medium' | 'low';
-    recipe: ParsedRecipe;
-    originalText: string;
-  }> {
+  ): Promise<ParseTextResult> {
     if (!options?.skipRateLimit) {
       await this.checkRateLimit(userId);
     }
@@ -142,7 +203,8 @@ export class RecipeParseService {
     await this.cache.set(key, count + 1, RATE_WINDOW_MS);
   }
 
-  private async callAI(userText: string): Promise<unknown> {
+  /** 网络调用隔离点：测试里子类覆写返回 canned JSON */
+  protected async callAI(userText: string): Promise<unknown> {
     const resp = await fetch(`${this.apiBase}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -172,15 +234,7 @@ export class RecipeParseService {
     return JSON.parse(content);
   }
 
-  private validateAndFormat(
-    raw: unknown,
-    originalText: string,
-  ): {
-    parsed: boolean;
-    confidence: 'high' | 'medium' | 'low';
-    recipe: ParsedRecipe;
-    originalText: string;
-  } {
+  private validateAndFormat(raw: unknown, originalText: string): ParseTextResult {
     const r = raw as any;
     const errors: string[] = [];
 
@@ -198,7 +252,8 @@ export class RecipeParseService {
       throw new BadRequestException(`解析结果不完整：${errors.join('；')}`);
     }
 
-    const ingredients: ParsedIngredient[] = (r.ingredients as any[]).map((i, idx) => {
+    const rawIngs = r.ingredients as any[];
+    const coerced = rawIngs.map((i, idx) => {
       let amount = Number(i.amount);
       let unit = String(i.unit ?? 'g').trim();
       if (isNaN(amount) || amount < 0) amount = 0;
@@ -214,6 +269,28 @@ export class RecipeParseService {
         scaleType,
       };
     });
+
+    // 缩放字段：AI 只提供分类，数值由服务端从 amount 重算；不自洽则整体降级 linear_legacy
+    const scaling = validateAndRecomputeScaling({
+      scalingProfile: r.scalingProfile,
+      percentBase: r.percentBase,
+      ingredients: coerced.map((c, idx) => ({
+        name: c.name,
+        amount: c.amount,
+        scalingRole: rawIngs[idx]?.scalingRole,
+        ratioGroup: rawIngs[idx]?.ratioGroup,
+        ratioHint: rawIngs[idx]?.ratioHint,
+        percentHint: rawIngs[idx]?.percentHint,
+      })),
+    });
+
+    const ingredients: ParsedIngredient[] = coerced.map((c, idx) => ({
+      ...c,
+      scalingRole: scaling.ingredients[idx].scalingRole,
+      percentageValue: scaling.ingredients[idx].percentageValue,
+      ratioGroup: scaling.ingredients[idx].ratioGroup,
+      ratioValue: scaling.ingredients[idx].ratioValue,
+    }));
 
     const steps: ParsedStep[] = (r.steps as any[]).map((s, idx) => ({
       stepNumber: Number(s.stepNumber ?? idx + 1),
@@ -233,6 +310,12 @@ export class RecipeParseService {
     } else {
       confidence = 'high';
     }
+    // 缩放分类的置信度联动：纠偏过 → 封顶 medium；整体降级 → 强制 low
+    if (scaling.severity === 'adjusted' && confidence === 'high') {
+      confidence = 'medium';
+    } else if (scaling.severity === 'fallback') {
+      confidence = 'low';
+    }
 
     return {
       parsed: true,
@@ -244,9 +327,12 @@ export class RecipeParseService {
         cookTime: totalMinutes ? `${totalMinutes}min` : undefined,
         baseServings: r.baseServings ? Math.max(1, Number(r.baseServings)) : 2,
         difficulty: ['easy', 'medium', 'hard'].includes(r.difficulty) ? r.difficulty : 'medium',
+        scalingProfile: scaling.scalingProfile,
+        baseAnchor: scaling.baseAnchor,
         ingredients,
         steps,
       },
+      warnings: scaling.warnings,
       originalText,
     };
   }

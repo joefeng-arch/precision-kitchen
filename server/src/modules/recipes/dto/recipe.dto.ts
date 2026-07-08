@@ -9,6 +9,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -17,12 +18,20 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
+import type { ScalingProfile, ScalingRole } from '../../../common/utils/scaling-engine';
 import { Difficulty, RecipeStatus } from '../entities/recipe.entity';
 import { ScaleType } from '../entities/recipe-ingredient.entity';
 
 const SCALE_TYPES = ['linear', 'sub_linear', 'fixed'] as const;
 const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 const STATUSES = ['draft', 'published', 'archived'] as const;
+const SCALING_PROFILES = [
+  'linear_legacy',
+  'bakers_percentage',
+  'ratio_based',
+  'multi_ratio',
+] as const;
+const SCALING_ROLES = ['anchor', 'percentage', 'ratio_linked', 'fixed'] as const;
 
 export class RecipeIngredientDto {
   @ApiPropertyOptional()
@@ -74,6 +83,65 @@ export class RecipeIngredientDto {
   @IsOptional()
   @IsInt()
   sort?: number;
+
+  // --- 缩放引擎字段（新 profile 用；linear_legacy 下保存时被剥离）---
+
+  @ApiPropertyOptional({ enum: SCALING_ROLES })
+  @IsOptional()
+  @IsEnum(SCALING_ROLES)
+  scalingRole?: ScalingRole;
+
+  @ApiPropertyOptional({ description: 'bakers：相对锚点 %；multi_ratio：相对 percentBase %' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
+  @Max(9999.999) // decimal(7,3)
+  percentageValue?: number;
+
+  @ApiPropertyOptional({ description: '比例组名（multi_ratio）' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  ratioGroup?: string;
+
+  @ApiPropertyOptional({ description: '组内 parts（咖啡 1 : 水 15）' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
+  @Max(9999999.999) // decimal(10,3)
+  ratioValue?: number;
+
+  @ApiPropertyOptional({ description: '取整小数位（0/1/2）；缺省走引擎默认' })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(2)
+  roundDp?: number;
+}
+
+/** percentBase：下标 XOR 组名（保存前无 DB id，用 ingredients 数组下标，服务端重映射） */
+export class PercentBaseDto {
+  @ApiPropertyOptional({ description: 'ingredients 数组下标（0 起），指向 ratio_linked 原料' })
+  @ValidateIf((o) => o.group === undefined)
+  @IsInt()
+  @Min(0)
+  ingredientIndex?: number;
+
+  @ApiPropertyOptional({ description: '比例组名（以组内成员用量之和为基准）' })
+  @ValidateIf((o) => o.ingredientIndex === undefined)
+  @IsString()
+  @MaxLength(32)
+  group?: string;
+}
+
+export class BaseAnchorDto {
+  @ApiPropertyOptional({ type: PercentBaseDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PercentBaseDto)
+  percentBase?: PercentBaseDto;
 }
 
 export class RecipeStepDto {
@@ -172,6 +240,17 @@ export class CreateRecipeDto {
   @ArrayMaxSize(10)
   @IsString({ each: true })
   tags?: string[];
+
+  @ApiPropertyOptional({ enum: SCALING_PROFILES, default: 'linear_legacy' })
+  @IsOptional()
+  @IsEnum(SCALING_PROFILES)
+  scalingProfile?: ScalingProfile;
+
+  @ApiPropertyOptional({ type: BaseAnchorDto, description: 'multi_ratio 有 percentage 料时必给' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BaseAnchorDto)
+  baseAnchor?: BaseAnchorDto;
 
   @ApiProperty({ type: [RecipeIngredientDto] })
   @IsArray()
