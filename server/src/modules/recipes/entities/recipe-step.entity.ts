@@ -28,4 +28,12 @@ export class RecipeStep {
 
   @Column({ type: 'varchar', length: 256, nullable: true })
   tips!: string | null;
+
+  @Column({
+    type: 'varchar',
+    length: 256,
+    nullable: true,
+    comment: '失败关键提醒（比 tips 高一级），与 tips 可并存',
+  })
+  warning!: string | null;
 }

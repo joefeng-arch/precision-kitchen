@@ -1,7 +1,9 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { ScrollView, TextInput, View } from 'react-native';
 
 import { Button, Chip, Screen, Typography } from '@/components/ui';
 import { ApiClientError } from '@/lib/api/errors';
+import { colors } from '@/lib/theme/tokens';
 import type { ParseConfidence, ParsedRecipe } from '@/lib/api/types';
 
 import { scalingProfileLabels } from '../scalingProfileLabels';
@@ -100,9 +102,22 @@ export function ConfirmView({
               <Typography variant="measurementSm" className="text-on-surface-variant">
                 {s.stepNumber}
               </Typography>
-              <Typography variant="bodyMd" className="flex-1">
-                {s.description}
-              </Typography>
+              <View className="flex-1">
+                <Typography variant="bodyMd">{s.description}</Typography>
+                {s.warning && (
+                  <View className="mt-1 flex-row items-start gap-2">
+                    <MaterialIcons
+                      name="warning"
+                      size={14}
+                      color={colors['primary-container']}
+                      style={{ marginTop: 5 }}
+                    />
+                    <Typography variant="bodyMd" className="flex-1 text-on-surface-variant">
+                      {s.warning}
+                    </Typography>
+                  </View>
+                )}
+              </View>
             </View>
           ))}
         </View>

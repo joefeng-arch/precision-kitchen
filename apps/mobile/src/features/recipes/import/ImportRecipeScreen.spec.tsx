@@ -55,7 +55,7 @@ const BREAD_RESULT: ParseTextResult = {
       { name: '高筋面粉', amount: 500, unit: 'g', groupName: '主料', scaleType: 'linear', scalingRole: 'anchor', percentageValue: 100, ratioGroup: null, ratioValue: null },
       { name: '水', amount: 325, unit: 'g', groupName: '主料', scaleType: 'linear', scalingRole: 'percentage', percentageValue: 65, ratioGroup: null, ratioValue: null },
     ],
-    steps: [{ stepNumber: 1, description: '混合揉面发酵烘烤', durationSeconds: null }],
+    steps: [{ stepNumber: 1, description: '混合揉面发酵烘烤', durationSeconds: null, warning: null }],
   },
 };
 
@@ -190,6 +190,37 @@ describe('ImportRecipeScreen', () => {
         params: { id: 'r-123' },
       });
     });
+  });
+
+  it('解析结果带步骤 warning → 确认页可见，保存 payload 透传', async () => {
+    mockCreate.mutate.mockImplementation((_body, opts) => opts?.onSuccess?.({ id: 'r-9' }));
+    await typeAndParse({
+      ...BREAD_RESULT,
+      recipe: {
+        ...BREAD_RESULT.recipe,
+        steps: [
+          {
+            stepNumber: 1,
+            description: '混合揉面发酵烘烤',
+            durationSeconds: null,
+            warning: '前 25 分钟别开烤箱门',
+          },
+        ],
+      },
+    });
+    await waitFor(() => {
+      expect(screen.getByText('前 25 分钟别开烤箱门')).toBeTruthy();
+    });
+
+    await fireEvent.press(screen.getByText('Save as draft'));
+    expect(mockCreate.mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        steps: expect.arrayContaining([
+          expect.objectContaining({ warning: '前 25 分钟别开烤箱门' }),
+        ]),
+      }),
+      expect.anything(),
+    );
   });
 
   it('Back to text → 回粘贴页且原文保留', async () => {

@@ -85,7 +85,11 @@
 | sort | `number` | |
 | name | `string \| null` | **仅详情注入**（customName 或公共食材名） |
 
-**RecipeStep**（详情内）：`{ id:number, recipeId:string, stepNumber:number, description:string, imageUrl:string|null, durationSeconds:number|null, tips:string|null }`
+**RecipeStep**（详情内）：`{ id:number, recipeId:string, stepNumber:number, description:string, imageUrl:string|null, durationSeconds:number|null, tips:string|null, warning:string|null }`
+
+**warning（步骤注意点切片起）**：失败关键提醒（如"前 25 分钟别开烤箱门"），比 tips 高一级、**与 tips 可并存**；
+≤256 字，create/update 的 step 项可选提交。已知缺口：admin `updateRecipe` 的**步骤数组编辑**会把 warning 置 null
+（admin 步骤映射未含该字段，仅当显式提交 steps 时触发；标量编辑安全）——admin 路径留待后续切片。
 
 **写入（AI 导入切片起）**：`scalingRole` / `percentageValue` / `ratioGroup` / `ratioValue` / `roundDp` 现可经
 create/update 的 ingredient 项提交（数值按 number 传，服务端存 decimal 字符串）。`scalingProfile`
@@ -249,7 +253,7 @@ Body：`{ text: string }`（20–5000 字）。
       { "name": "高筋面粉", "amount": 500, "unit": "g", "groupName": "主料", "scaleType": "linear",
         "scalingRole": "anchor", "percentageValue": 100, "ratioGroup": null, "ratioValue": null }
     ],
-    "steps": [ { "stepNumber": 1, "description": "…", "durationSeconds": null } ]
+    "steps": [ { "stepNumber": 1, "description": "…", "durationSeconds": null, "warning": "前 25 分钟别开烤箱门" | null } ]
   }
 }
 ```
@@ -264,5 +268,8 @@ Body：`{ text: string }`（20–5000 字）。
 - confidence 联动：缩放有纠偏 → 封顶 medium；整体降级 → 强制 low。
 - `baseAnchor.percentBase.ingredientIndex` 是 ingredients 数组下标——确认后把整个 recipe 原样提交
   `POST /recipes` 即可，服务端负责下标→id 重映射（见 §1）。
+- 步骤级 `warning`（单数，per-step）与顶层 `warnings[]`（缩放纠偏说明数组）**是两个不相干的字段**。
+  步骤 warning 由 AI **保守提取**：仅"违反即直接导致失败"的操作提醒（别开烤箱门/别开盖类），
+  普通技巧不算，拿不准为 null；服务端 trim + 截断 256。
 
 失败场景：文本不完整（缺标题/食材/步骤）→ 400；AI 服务不可用 → 400；超限流 → 429。

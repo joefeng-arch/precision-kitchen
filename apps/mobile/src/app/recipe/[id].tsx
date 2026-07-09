@@ -157,9 +157,22 @@ export default function RecipeDetailScreen() {
                       {step.stepNumber}
                     </Typography>
                   </View>
-                  <Typography variant="bodyLg" style={{ flex: 1 }}>
-                    {step.description}
-                  </Typography>
+                  <View style={{ flex: 1 }}>
+                    <Typography variant="bodyLg">{step.description}</Typography>
+                    {step.warning && (
+                      <View className="mt-2 flex-row items-start gap-2 rounded-md border border-primary-container px-3 py-2">
+                        <MaterialIcons
+                          name="warning"
+                          size={16}
+                          color={colors['primary-container']}
+                          style={{ marginTop: 4 }}
+                        />
+                        <Typography variant="bodyMd" style={{ flex: 1 }}>
+                          {step.warning}
+                        </Typography>
+                      </View>
+                    )}
+                  </View>
                 </View>
               ))}
             </View>

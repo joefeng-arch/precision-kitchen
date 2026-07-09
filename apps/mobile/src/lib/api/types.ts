@@ -106,6 +106,8 @@ export interface RecipeStep {
   imageUrl: string | null;
   durationSeconds: number | null;
   tips: string | null;
+  /** 失败关键提醒（比 tips 高一级），与 tips 可并存 */
+  warning: string | null;
 }
 
 export interface RecipeAuthor {
@@ -298,6 +300,8 @@ export interface ParsedStep {
   stepNumber: number;
   description: string;
   durationSeconds: number | null;
+  /** 步骤级失败关键提醒（单数）；与结果级 warnings[]（缩放纠偏说明）无关 */
+  warning: string | null;
 }
 
 export interface ParsedRecipe {
@@ -347,6 +351,7 @@ export interface CreateRecipeStep {
   imageUrl?: string;
   durationSeconds?: number;
   tips?: string;
+  warning?: string;
 }
 
 export interface CreateRecipeRequest {

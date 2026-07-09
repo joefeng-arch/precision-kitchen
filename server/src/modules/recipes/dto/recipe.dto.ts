@@ -171,6 +171,12 @@ export class RecipeStepDto {
   @IsString()
   @MaxLength(256)
   tips?: string;
+
+  @ApiPropertyOptional({ description: '失败关键提醒（如"前 25 分钟别开烤箱门"）；与 tips 可并存' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  warning?: string;
 }
 
 export class CreateRecipeDto {

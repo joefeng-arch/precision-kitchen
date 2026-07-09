@@ -294,3 +294,40 @@ describe('RecipesService.update — 缩放字段与 baseAnchor 悬垂防护', ()
     expect(store.recipe.baseAnchor).toBeNull();
   });
 });
+
+describe('RecipesService — 步骤 warning 落库与往返', () => {
+  const STEP_WITH_BOTH = {
+    stepNumber: 1,
+    description: '烤箱烘烤',
+    tips: '上色不够可加烤 2 分钟',
+    warning: '前 25 分钟别开烤箱门',
+  };
+
+  it('create：步骤 warning 与 tips 并存落库', async () => {
+    const { svc, store } = makeService();
+    await svc.create('u1', {
+      title: '吐司',
+      ingredients: [{ customName: '面粉', amount: 500, unit: 'g' }],
+      steps: [STEP_WITH_BOTH],
+    } as any);
+    expect(store.steps[0].warning).toBe('前 25 分钟别开烤箱门');
+    expect(store.steps[0].tips).toBe('上色不够可加烤 2 分钟');
+  });
+
+  it('ingredients-only 更新：steps 往返不清空 warning（回归）', async () => {
+    const { svc, store } = makeService();
+    await svc.create('u1', {
+      title: '吐司',
+      ingredients: [{ customName: '面粉', amount: 500, unit: 'g' }],
+      steps: [STEP_WITH_BOTH],
+    } as any);
+
+    await svc.update('u1', 'r-1', {
+      ingredients: [{ customName: '高筋面粉', amount: 450, unit: 'g' }],
+    } as any);
+
+    expect(store.steps).toHaveLength(1);
+    expect(store.steps[0].warning).toBe('前 25 分钟别开烤箱门');
+    expect(store.steps[0].tips).toBe('上色不够可加烤 2 分钟');
+  });
+});

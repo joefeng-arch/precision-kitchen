@@ -366,6 +366,8 @@ export class RecipesService {
     imageUrl: s.imageUrl ?? undefined,
     durationSeconds: s.durationSeconds ?? undefined,
     tips: s.tips ?? undefined,
+    // warning 必须参与往返，否则 ingredients-only 更新会把它静默清空（同 riToDto 的缩放字段）
+    warning: s.warning ?? undefined,
   });
 
   /** 返回保存后的 ingredients（含分配的 id，供 baseAnchor 下标→id 重映射） */
@@ -416,6 +418,7 @@ export class RecipesService {
           imageUrl: s.imageUrl ?? null,
           durationSeconds: s.durationSeconds ?? null,
           tips: s.tips ?? null,
+          warning: s.warning ?? null,
         }),
       );
       await mgr.save(entities);
