@@ -2,7 +2,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Pressable, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui';
-import { fonts } from '@/lib/theme/tokens';
+import { fonts, radii } from '@/lib/theme/tokens';
 import type { RecipeStep, TimerStatus } from '@/lib/api/types';
 
 import { DarkText } from './DarkText';
@@ -65,6 +65,36 @@ export function BrewStepView({
       >
         {step.description}
       </DarkText>
+
+      {step.warning && (
+        // 失败关键提醒：heat 边框 callout，正文 bodyLg（大于 tips），排在 tips 之前
+        <View
+          style={{
+            alignSelf: 'stretch',
+            alignItems: 'center',
+            marginTop: 16,
+            borderWidth: 1,
+            borderColor: '#D9622B',
+            borderRadius: radii.md,
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <MaterialIcons name="warning" size={14} color="#D9622B" />
+            <DarkText variant="labelCaps" color="#D9622B">
+              CRITICAL
+            </DarkText>
+          </View>
+          <DarkText
+            variant="bodyLg"
+            color="#FBF8F2"
+            style={{ textAlign: 'center', marginTop: 4 }}
+          >
+            {step.warning}
+          </DarkText>
+        </View>
+      )}
 
       {step.tips && (
         <DarkText variant="bodyMd" color="#C9C2B5" style={{ textAlign: 'center', marginTop: 12 }}>

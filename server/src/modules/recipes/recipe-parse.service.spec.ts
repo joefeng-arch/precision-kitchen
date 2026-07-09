@@ -209,3 +209,50 @@ describe('RecipeParseService — 缩放字段解析', () => {
     ).resolves.toMatchObject({ parsed: true });
   });
 });
+
+describe('RecipeParseService — 步骤 warning 提取', () => {
+  const BASE = {
+    title: '乡村面包',
+    description: '直接法',
+    totalMinutes: 180,
+    ingredients: [{ name: '面粉', amount: 500, unit: 'g' }],
+  };
+
+  it('canned 带 warning → 原样透出，不影响 confidence', async () => {
+    const { svc } = makeService({
+      ...BASE,
+      steps: [
+        { stepNumber: 1, description: '烤箱 200 度烘烤 35 分钟', warning: '前 25 分钟别开烤箱门' },
+        { stepNumber: 2, description: '出炉放凉一小时再切片', warning: null },
+      ],
+    });
+    const res = await svc.parseText('u1', 'x'.repeat(30));
+    expect(res.recipe.steps[0].warning).toBe('前 25 分钟别开烤箱门');
+    expect(res.recipe.steps[1].warning).toBeNull();
+    expect(res.confidence).toBe('high');
+  });
+
+  it('旧 canned 形状（无 warning 键）→ null（向后兼容）', async () => {
+    const { svc } = makeService({ ...BASE, steps: STEPS });
+    const res = await svc.parseText('u1', 'x'.repeat(30));
+    expect(res.recipe.steps[0].warning).toBeNull();
+  });
+
+  it('warning 空串/全空白 → null', async () => {
+    const { svc } = makeService({
+      ...BASE,
+      steps: [{ stepNumber: 1, description: '烘烤', warning: '   ' }],
+    });
+    const res = await svc.parseText('u1', 'x'.repeat(30));
+    expect(res.recipe.steps[0].warning).toBeNull();
+  });
+
+  it('超长 warning → 截断 256 字符', async () => {
+    const { svc } = makeService({
+      ...BASE,
+      steps: [{ stepNumber: 1, description: '烘烤', warning: 'x'.repeat(300) }],
+    });
+    const res = await svc.parseText('u1', 'x'.repeat(30));
+    expect(res.recipe.steps[0].warning).toHaveLength(256);
+  });
+});

@@ -114,6 +114,7 @@ export function toCreateRecipeRequest(recipe: ParsedRecipe): CreateRecipeRequest
       stepNumber: s.stepNumber,
       description: s.description,
       durationSeconds: s.durationSeconds ?? undefined,
+      warning: s.warning ?? undefined,
     })),
   };
 }

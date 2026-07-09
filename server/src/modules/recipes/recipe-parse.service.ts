@@ -28,6 +28,8 @@ export interface ParsedStep {
   stepNumber: number;
   description: string;
   durationSeconds: number | null;
+  /** 失败关键提醒（违反即失败），与结果级 warnings[]（缩放纠偏说明）无关 */
+  warning: string | null;
 }
 
 export interface ParsedRecipe {
@@ -86,7 +88,8 @@ const SYSTEM_PROMPT = `你是一个专业的厨师助手，擅长从非结构化
     {
       "stepNumber": 1,
       "description": "步骤描述",
-      "durationSeconds": null
+      "durationSeconds": null,
+      "warning": null
     }
   ]
 }
@@ -98,36 +101,41 @@ const SYSTEM_PROMPT = `你是一个专业的厨师助手，擅长从非结构化
 4. scaleType：调味料/调料用 "sub_linear"，固定用量（如泡打粉）用 "fixed"，其余用 "linear"
 5. steps 中有明确计时（如"炒3分钟"→180，"煮10分钟"→600）时填 durationSeconds，否则填 null
 6. totalMinutes 为整个菜谱的估计烹饪总时间（分钟），没有时可不填
+7. warning：仅当某步骤存在"违反即直接导致失败"的关键提醒时提取（如"前 25 分钟别开烤箱门"
+   "炖煮中途别开盖""发酵期间别搅拌"），保留原文表述；普通经验技巧、口味建议不算。
+   拿不准就填 null，宁缺勿滥。
 
 缩放模式（scalingProfile）判定规则：
-7. 按配方类型选择，拿不准时一律用 "linear_legacy"（宁可保守，不要乱标）：
+8. 按配方类型选择，拿不准时一律用 "linear_legacy"（宁可保守，不要乱标）：
    - "bakers_percentage"：烘焙面团类（面包/吐司/披萨/贝果/bread/dough/sourdough 等以面粉为主体）
    - "ratio_based"：两种核心原料按固定比例（手冲咖啡/pour-over、茶水比，常见 "1:15" 式表述），
      且配方中所有原料都参与该比例时才可用
    - "multi_ratio"：多组分比例饮品/调酒（奶茶/鸡尾酒），存在一组或多组"份数比"，
      可能另有按某液体量百分比投放的原料（糖/奶）
    - "linear_legacy"：普通家常菜或无明显比例结构
-8. scalingRole 按 profile 填写（linear_legacy 时全部填 null）：
+9. scalingRole 按 profile 填写（linear_legacy 时全部填 null）：
    - bakers_percentage：主体面粉唯一一个 "anchor"；随面粉量联动的原料 "percentage"；
      不随量的（装饰、模具用油、"适量"原料）"fixed"
    - ratio_based：比例的基准端（如咖啡粉）"anchor"，另一端 "ratio_linked"
    - multi_ratio：每个比例组的成员都填 "ratio_linked" 并给同一 ratioGroup（英文短名，如
      "tea_base"、"mix"）；按液体量百分比投放的原料填 "percentage"；不参与联动的（冰块、
      "适量"原料）填 "fixed"
-9. 不要自行计算百分比或比例数值，服务器会根据 amount 重新计算。仅当文本给出了比例/百分比
+10. 不要自行计算百分比或比例数值，服务器会根据 amount 重新计算。仅当文本给出了比例/百分比
    但没有给具体克数时才填提示值：
    - ratioHint：如"咖啡与水 1:15"但无克数 → 咖啡 ratioHint=1、水 ratioHint=15
    - percentHint：如"糖为水量的 10%"但无克数 → 糖 percentHint=10
-10. percentBase：仅 multi_ratio 且存在 "percentage" 原料时必填，其余情况填 null。
+11. percentBase：仅 multi_ratio 且存在 "percentage" 原料时必填，其余情况填 null。
     形如 {"ingredientIndex": 1}（ingredients 数组下标，从 0 开始，必须指向某个 ratio_linked
     原料）或 {"group": "组名"}（以该组全部成员用量之和为基准）。
     例如"糖按热水量的 10%"→ 指向"热水"的下标。
-11. anchor 必须唯一。角色划分不清、找不到 anchor 时，scalingProfile 整体退回 "linear_legacy"。
+12. anchor 必须唯一。角色划分不清、找不到 anchor 时，scalingProfile 整体退回 "linear_legacy"。
 
 示例（仅节选相关字段）：
-示例1 输入：高筋面粉500g、水325g、盐10g、酵母5g …（面包做法）
+示例1 输入：高筋面粉500g、水325g、盐10g、酵母5g …（面包做法，烘烤步骤注明
+  "前 25 分钟不要开烤箱门，否则会塌陷"）
 输出：scalingProfile="bakers_percentage"，percentBase=null，
-  面粉 scalingRole="anchor"；水、盐、酵母 scalingRole="percentage"
+  面粉 scalingRole="anchor"；水、盐、酵母 scalingRole="percentage"；
+  烘烤步骤 warning="前 25 分钟不要开烤箱门，否则会塌陷"，其余步骤 warning=null
 示例2 输入：咖啡粉20g，水300g，粉水比1:15 …（手冲做法）
 输出：scalingProfile="ratio_based"，percentBase=null，
   咖啡粉 scalingRole="anchor"，水 scalingRole="ratio_linked"（有克数，ratioHint 不填）
@@ -286,11 +294,16 @@ export class RecipeParseService {
       ratioValue: scaling.ingredients[idx].ratioValue,
     }));
 
-    const steps: ParsedStep[] = (r.steps as any[]).map((s, idx) => ({
-      stepNumber: Number(s.stepNumber ?? idx + 1),
-      description: String(s.description ?? '').trim(),
-      durationSeconds: s.durationSeconds != null ? Number(s.durationSeconds) : null,
-    }));
+    const steps: ParsedStep[] = (r.steps as any[]).map((s, idx) => {
+      const warningRaw = s.warning != null ? String(s.warning).trim() : '';
+      return {
+        stepNumber: Number(s.stepNumber ?? idx + 1),
+        description: String(s.description ?? '').trim(),
+        durationSeconds: s.durationSeconds != null ? Number(s.durationSeconds) : null,
+        // varchar(256) 兜底截断；空白 → null
+        warning: warningRaw ? warningRaw.slice(0, 256) : null,
+      };
+    });
 
     const totalMinutes = r.totalMinutes ? Number(r.totalMinutes) : undefined;
     const approxCount = ingredients.filter((i) => i.amount === 0).length;

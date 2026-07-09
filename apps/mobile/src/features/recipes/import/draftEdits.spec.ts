@@ -30,7 +30,7 @@ function recipeWith(
     scalingProfile,
     baseAnchor,
     ingredients,
-    steps: [{ stepNumber: 1, description: '做', durationSeconds: null }],
+    steps: [{ stepNumber: 1, description: '做', durationSeconds: null, warning: null }],
   };
 }
 
@@ -286,6 +286,18 @@ describe('toCreateRecipeRequest — 保存 payload 映射', () => {
     expect(out.ingredients[0].amount).toBe(0.13);
     expect(out.ingredients[1].amount).toBe(66.67);
     expect(out.ingredients[1].percentageValue).toBe(66.667);
+  });
+
+  it('toCreateRecipeRequest：步骤 warning 透传，null 洗成 undefined', () => {
+    const recipe = recipeWith('linear_legacy', [ing({ name: '面粉' })]);
+    recipe.steps = [
+      { stepNumber: 1, description: '烘烤', durationSeconds: null, warning: '前 25 分钟别开烤箱门' },
+      { stepNumber: 2, description: '放凉', durationSeconds: null, warning: null },
+    ];
+    const out = toCreateRecipeRequest(recipe);
+    expect(out.steps[0].warning).toBe('前 25 分钟别开烤箱门');
+    expect(out.steps[1].warning).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(out)).steps[1]).not.toHaveProperty('warning');
   });
 
   it('降级后的草稿 → payload 无任何缩放 key、profile linear_legacy', () => {

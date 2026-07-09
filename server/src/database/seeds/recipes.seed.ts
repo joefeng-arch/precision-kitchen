@@ -24,6 +24,8 @@ interface SeedStep {
   description: string;
   durationSeconds?: number;
   tips?: string;
+  /** 失败关键提醒（比 tips 高一级） */
+  warning?: string;
 }
 
 interface SeedRecipe {
@@ -105,6 +107,7 @@ const RECIPES: SeedRecipe[] = [
         description: '锅烧热放少量油，下冰糖小火炒至焦糖色，下五花肉翻炒上色。',
         durationSeconds: 240,
         tips: '冰糖一定要小火慢炒，否则会发苦',
+        warning: '糖色一变琥珀色立刻下肉，晚几秒就发苦',
       },
       { description: '加入葱姜、八角、香叶炒香，烹入料酒、生抽、老抽炒匀。', durationSeconds: 120 },
       { description: '加开水没过肉块，大火烧开转小火炖 50 分钟。', durationSeconds: 3000 },
@@ -334,6 +337,7 @@ export async function seedRecipes(ds: DataSource): Promise<void> {
           imageUrl: null,
           durationSeconds: step.durationSeconds ?? null,
           tips: step.tips ?? null,
+          warning: step.warning ?? null,
         }),
       );
     }
