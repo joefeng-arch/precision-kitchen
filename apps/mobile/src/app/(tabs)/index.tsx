@@ -24,9 +24,14 @@ export default function HomeScreen() {
         contentContainerStyle={{ padding: 20, gap: 32 }}
         ItemSeparatorComponent={() => <View style={{ height: 32 }} />}
         ListHeaderComponent={
-          <Typography variant="headlineMd" className="mb-4">
-            Recipes
-          </Typography>
+          <View className="mb-4 flex-row items-center justify-between">
+            <Typography variant="headlineMd">Recipes</Typography>
+            <Button
+              variant="secondary"
+              label="Import"
+              onPress={() => router.push('/recipe/import')}
+            />
+          </View>
         }
         ListFooterComponent={
           data && data.items.length < data.total ? (

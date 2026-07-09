@@ -267,6 +267,108 @@ export interface WhoAmI {
   role: UserRole;
 }
 
+// ─── 5.5 AI 智能导入（data-contract §8）────────────────────────────
+
+export type ParseConfidence = 'high' | 'medium' | 'low';
+
+/**
+ * 解析/创建共用的 percentBase 形态：保存前没有 DB id，用 ingredients 数组下标，
+ * 服务端插入后重映射为真实 id。与 §3 scale 请求体的 PercentBase（{id}|{group}）不同构。
+ */
+export type ParsedPercentBase = { ingredientIndex: number } | { group: string };
+
+export interface ParsedBaseAnchor {
+  percentBase: ParsedPercentBase;
+}
+
+/** 解析草稿的原料：amount 为 number（非实体的 decimal 字符串），数值已由服务端重算 */
+export interface ParsedIngredient {
+  name: string;
+  amount: number;
+  unit: string;
+  groupName: string;
+  scaleType: ScaleType;
+  scalingRole: ScalingRole | null;
+  percentageValue: number | null;
+  ratioGroup: string | null;
+  ratioValue: number | null;
+}
+
+export interface ParsedStep {
+  stepNumber: number;
+  description: string;
+  durationSeconds: number | null;
+}
+
+export interface ParsedRecipe {
+  title: string;
+  description: string; // 恒 string（缺失时后端置 ''）
+  cookTime?: string; // 如 "180min"；不在 CreateRecipeRequest，保存时丢弃
+  totalMinutes?: number;
+  baseServings: number;
+  difficulty: Difficulty;
+  scalingProfile: ScalingProfile; // 恒在；分类不自洽时后端已降级 linear_legacy
+  baseAnchor: ParsedBaseAnchor | null; // 仅 multi_ratio 有 percentage 料时非 null
+  ingredients: ParsedIngredient[];
+  steps: ParsedStep[];
+}
+
+/** POST /recipes/parse-text 响应（data）。草稿不入库，确认后另行 POST /recipes。 */
+export interface ParseTextResult {
+  parsed: boolean;
+  confidence: ParseConfidence;
+  warnings: string[]; // 恒在；干净时 []；服务端中文文案
+  originalText: string;
+  recipe: ParsedRecipe;
+}
+
+// ─── 5.6 创建配方（POST /recipes，CreateRecipeDto 镜像）───────────
+
+export interface CreateRecipeIngredient {
+  ingredientId?: number;
+  customName?: string; // 解析草稿的 name 映射到这里
+  amount: number; // 最多 2 位小数（服务端校验）
+  unit: string;
+  scaleType?: ScaleType;
+  scaleFactor?: number;
+  groupName?: string;
+  notes?: string;
+  sort?: number;
+  scalingRole?: ScalingRole;
+  percentageValue?: number; // 最多 3 位小数
+  ratioGroup?: string;
+  ratioValue?: number; // 最多 3 位小数
+  roundDp?: number; // 0/1/2
+}
+
+export interface CreateRecipeStep {
+  stepNumber: number;
+  description: string;
+  imageUrl?: string;
+  durationSeconds?: number;
+  tips?: string;
+}
+
+export interface CreateRecipeRequest {
+  title: string;
+  description?: string;
+  coverImage?: string;
+  categoryId?: number;
+  categoryIds?: number[];
+  mealSceneId?: number;
+  baseServings?: number;
+  difficulty?: Difficulty;
+  totalMinutes?: number;
+  status?: RecipeStatus;
+  isPublic?: boolean;
+  tags?: string[];
+  scalingProfile?: ScalingProfile;
+  /** percentBase 用 {ingredientIndex}（服务端重映射）或 {group}；缩放结构不自洽 → 400 */
+  baseAnchor?: { percentBase?: ParsedPercentBase };
+  ingredients: CreateRecipeIngredient[];
+  steps: CreateRecipeStep[];
+}
+
 // ─── 6. Timers（server/src/modules/timers，未见于 data-contract.md，按源码反推）──
 
 export type TimerStatus = 'running' | 'paused' | 'finished';

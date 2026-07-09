@@ -1,6 +1,8 @@
 import { apiFetch } from './client';
 import type {
+  CreateRecipeRequest,
   Paginated,
+  ParseTextResult,
   RecipeListItem,
   RecipeDetail,
   ScaleRequest,
@@ -50,4 +52,19 @@ export function scaleRecipe(id: string, body: ScaleRequest) {
 /** 仅 linear_legacy 配方可用；非 legacy 配方后端已返回 400，客户端不做额外分支判断。 */
 export function scaleRecipeByServings(id: string, servings: number) {
   return apiFetch<ScaleResult>(`/recipes/${id}/scale${toQueryString({ servings })}`);
+}
+
+/** AI 智能导入：解析粘贴文本为结构化草稿（不入库；限流 5 次/分钟） */
+export function parseRecipeText(text: string) {
+  return apiFetch<ParseTextResult>('/recipes/parse-text', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+}
+
+export function createRecipe(body: CreateRecipeRequest) {
+  return apiFetch<RecipeDetail>('/recipes', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
