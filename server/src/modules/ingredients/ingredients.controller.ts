@@ -12,11 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminJwtAuthGuard } from '../admin/guards/admin-jwt-auth.guard';
-import {
-  CreateIngredientDto,
-  ListIngredientsDto,
-  UpdateIngredientDto,
-} from './dto/ingredient.dto';
+import { CreateIngredientDto, ListIngredientsDto, UpdateIngredientDto } from './dto/ingredient.dto';
 import { IngredientsService } from './ingredients.service';
 
 @ApiTags('ingredients')

@@ -101,10 +101,7 @@ export class ShareService {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const QRCode = require('qrcode') as any;
-      const frontendUrl = this.config.get<string>(
-        'FRONTEND_URL',
-        'http://localhost:5173',
-      );
+      const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:5173');
       const shareUrl = `${frontendUrl}?scene=${shortCode}`;
       const buffer = await QRCode.toBuffer(shareUrl, {
         width: 280,

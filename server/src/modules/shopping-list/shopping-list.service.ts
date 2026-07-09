@@ -6,10 +6,7 @@ import { Recipe } from '../recipes/entities/recipe.entity';
 import { Ingredient } from '../ingredients/entities/ingredient.entity';
 import { UserIngredient } from '../ingredients/entities/user-ingredient.entity';
 import { Category } from '../categories/entities/category.entity';
-import {
-  calculateScaledAmount,
-  roundAmount,
-} from '../../common/utils/scaling-calculator';
+import { calculateScaledAmount, roundAmount } from '../../common/utils/scaling-calculator';
 import { toBase, getCategory as getUnitCategory } from '../../common/utils/unit-converter';
 
 // ─── Response types ──────────────────────────────────────────
@@ -301,7 +298,7 @@ export class ShoppingListService {
           const priceInBase = toBase(1, priceUnit);
           if (priceInBase && priceInBase.baseUnit === agg.baseUnit) {
             // cost = amount_in_base * (unitPrice / priceUnit_in_base)
-            cost = roundCost(agg.baseAmount * userPrice / priceInBase.value);
+            cost = roundCost((agg.baseAmount * userPrice) / priceInBase.value);
           }
         }
       }
@@ -309,7 +306,7 @@ export class ShoppingListService {
         const refPrice = parseFloat(catalogEntry.referencePrice);
         const refConverted = toBase(1, catalogEntry.referenceUnit);
         if (agg.useBase && refConverted && refConverted.baseUnit === agg.baseUnit) {
-          cost = roundCost(agg.baseAmount * refPrice / refConverted.value);
+          cost = roundCost((agg.baseAmount * refPrice) / refConverted.value);
         }
       }
 

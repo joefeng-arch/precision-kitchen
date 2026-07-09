@@ -52,8 +52,12 @@ describe('AuthService.login("mock") 端到端签发 JWT（DB 层 mock）', () =>
 
     // mock 出 DB 层：upsertByOpenid 返回一个用户，save 原样返回
     const savedUser: any = {
-      id: 'user-1', openid: 'mock-alice', role: 'user',
-      nickname: 'Dev User alice', avatar: null, lastLoginAt: null,
+      id: 'user-1',
+      openid: 'mock-alice',
+      role: 'user',
+      nickname: 'Dev User alice',
+      avatar: null,
+      lastLoginAt: null,
     };
     const usersMock: any = {
       upsertByExternalId: jest.fn().mockResolvedValue(savedUser),

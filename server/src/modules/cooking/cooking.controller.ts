@@ -18,11 +18,7 @@ import { IsNumber, IsString, IsUUID, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CookingService } from './cooking.service';
 import { StockDeductionService } from './stock-deduction.service';
-import {
-  CreateCookingLogDto,
-  ListCookingLogsDto,
-  PreviewCostDto,
-} from './dto/cooking.dto';
+import { CreateCookingLogDto, ListCookingLogsDto, PreviewCostDto } from './dto/cooking.dto';
 
 class DeductionPreviewDto {
   @IsUUID()

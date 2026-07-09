@@ -3,11 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Repository } from 'typeorm';
 import { paginate } from '../../common/dto/pagination.dto';
 import { Category } from '../categories/entities/category.entity';
-import {
-  CreateIngredientDto,
-  ListIngredientsDto,
-  UpdateIngredientDto,
-} from './dto/ingredient.dto';
+import { CreateIngredientDto, ListIngredientsDto, UpdateIngredientDto } from './dto/ingredient.dto';
 import { Ingredient } from './entities/ingredient.entity';
 
 @Injectable()
@@ -37,9 +33,7 @@ export class IngredientsService {
       new Set(items.map((i) => i.categoryId).filter((v): v is number => typeof v === 'number')),
     );
     const cats =
-      catIds.length > 0
-        ? await this.categories.find({ where: { id: In(catIds) } as any })
-        : [];
+      catIds.length > 0 ? await this.categories.find({ where: { id: In(catIds) } as any }) : [];
     const catById = new Map(cats.map((c) => [c.id, c]));
     const enriched = items.map((i) => ({
       ...i,

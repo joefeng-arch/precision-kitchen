@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
  * canonical 单位下单价常常是 0.0252/g 这种小数，需要 4 位精度。

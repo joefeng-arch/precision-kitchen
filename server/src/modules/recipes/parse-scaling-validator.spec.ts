@@ -1,7 +1,4 @@
-import {
-  collectScalingErrors,
-  validateAndRecomputeScaling,
-} from './parse-scaling-validator';
+import { collectScalingErrors, validateAndRecomputeScaling } from './parse-scaling-validator';
 
 /** 快速构造分类输入原料 */
 function ing(
@@ -191,11 +188,7 @@ describe('validateAndRecomputeScaling — bakers_percentage', () => {
   it('角色缺失按 amount 纠偏：>0 → percentage、=0 → fixed（adjusted）', () => {
     const r = validateAndRecomputeScaling({
       scalingProfile: 'bakers_percentage',
-      ingredients: [
-        ing('面粉', 500, { scalingRole: 'anchor' }),
-        ing('水', 325),
-        ing('香草精', 0),
-      ],
+      ingredients: [ing('面粉', 500, { scalingRole: 'anchor' }), ing('水', 325), ing('香草精', 0)],
     });
     expect(r.severity).toBe('adjusted');
     expect(r.ingredients[1].scalingRole).toBe('percentage');

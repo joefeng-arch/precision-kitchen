@@ -71,7 +71,9 @@ export class CreateUserIngredientDto {
   @IsIn(STORAGE_TYPES as unknown as string[])
   storageType?: StorageType;
 
-  @ApiPropertyOptional({ description: '食材分类 id（references categories where type=ingredient）' })
+  @ApiPropertyOptional({
+    description: '食材分类 id（references categories where type=ingredient）',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

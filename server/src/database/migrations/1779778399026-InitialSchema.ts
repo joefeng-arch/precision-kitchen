@@ -18,7 +18,9 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         "updatedAt" timestamptz NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_users_openid" ON "users" ("openid")`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_users_openid" ON "users" ("openid")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "categories" (
@@ -31,7 +33,9 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         "updatedAt" timestamptz NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_categories_type_name" ON "categories" ("type", "name")`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_categories_type_name" ON "categories" ("type", "name")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "ingredients" (
@@ -48,7 +52,9 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         "updatedAt" timestamptz NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_ingredients_name" ON "ingredients" ("name")`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_ingredients_name" ON "ingredients" ("name")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "recipes" (
@@ -69,9 +75,15 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         "updatedAt" timestamptz NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_recipes_authorId" ON "recipes" ("authorId")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_recipes_status" ON "recipes" ("status")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_recipes_categoryId" ON "recipes" ("categoryId")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_recipes_authorId" ON "recipes" ("authorId")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_recipes_status" ON "recipes" ("status")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_recipes_categoryId" ON "recipes" ("categoryId")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "recipe_ingredients" (
@@ -89,7 +101,9 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         CONSTRAINT "FK_recipe_ingredients_recipe" FOREIGN KEY ("recipeId") REFERENCES "recipes"("id") ON DELETE CASCADE
       )
     `);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_recipe_ingredients_recipeId" ON "recipe_ingredients" ("recipeId")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_recipe_ingredients_recipeId" ON "recipe_ingredients" ("recipeId")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "recipe_steps" (
@@ -103,7 +117,9 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         CONSTRAINT "FK_recipe_steps_recipe" FOREIGN KEY ("recipeId") REFERENCES "recipes"("id") ON DELETE CASCADE
       )
     `);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_recipe_steps_recipeId" ON "recipe_steps" ("recipeId")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_recipe_steps_recipeId" ON "recipe_steps" ("recipeId")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "recipe_versions" (
@@ -116,7 +132,9 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         "createdAt" timestamptz NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_recipe_versions_recipeId_versionNumber" ON "recipe_versions" ("recipeId", "versionNumber")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_recipe_versions_recipeId_versionNumber" ON "recipe_versions" ("recipeId", "versionNumber")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "user_ingredients" (
@@ -133,8 +151,12 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         "updatedAt" timestamptz NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_user_ingredients_userId_ingredientId" ON "user_ingredients" ("userId", "ingredientId")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_user_ingredients_userId_customName" ON "user_ingredients" ("userId", "customName")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_user_ingredients_userId_ingredientId" ON "user_ingredients" ("userId", "ingredientId")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_user_ingredients_userId_customName" ON "user_ingredients" ("userId", "customName")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "favorites" (
@@ -144,8 +166,12 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         "createdAt" timestamptz NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "IDX_favorites_userId_recipeId" ON "favorites" ("userId", "recipeId")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_favorites_userId" ON "favorites" ("userId")`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "IDX_favorites_userId_recipeId" ON "favorites" ("userId", "recipeId")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_favorites_userId" ON "favorites" ("userId")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "cooking_logs" (
@@ -163,8 +189,12 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         "createdAt" timestamptz NOT NULL DEFAULT now()
       )
     `);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_cooking_logs_userId_cookedAt" ON "cooking_logs" ("userId", "cookedAt")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_cooking_logs_recipeId" ON "cooking_logs" ("recipeId")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_cooking_logs_userId_cookedAt" ON "cooking_logs" ("userId", "cookedAt")`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_cooking_logs_recipeId" ON "cooking_logs" ("recipeId")`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "cooking_log_costs" (
@@ -181,7 +211,9 @@ export class InitialSchema1779778399026 implements MigrationInterface {
         CONSTRAINT "FK_cooking_log_costs_log" FOREIGN KEY ("logId") REFERENCES "cooking_logs"("id") ON DELETE CASCADE
       )
     `);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_cooking_log_costs_logId" ON "cooking_log_costs" ("logId")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_cooking_log_costs_logId" ON "cooking_log_costs" ("logId")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

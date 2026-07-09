@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddUserIngredientShelfLife1779800000000 implements MigrationInterface {
   name = 'AddUserIngredientShelfLife1779800000000';
@@ -13,11 +13,7 @@ export class AddUserIngredientShelfLife1779800000000 implements MigrationInterfa
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "user_ingredients" DROP COLUMN IF EXISTS "storageType"`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "user_ingredients" DROP COLUMN IF EXISTS "expiryDate"`,
-    );
+    await queryRunner.query(`ALTER TABLE "user_ingredients" DROP COLUMN IF EXISTS "storageType"`);
+    await queryRunner.query(`ALTER TABLE "user_ingredients" DROP COLUMN IF EXISTS "expiryDate"`);
   }
 }

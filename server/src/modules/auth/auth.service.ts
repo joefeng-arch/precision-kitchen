@@ -30,9 +30,7 @@ export class AuthService {
   ) {
     // 按 providerType 索引，O(1) 查找
     this.providerMap = new Map(providers.map((p) => [p.providerType, p]));
-    this.logger.log(
-      `Registered auth providers: ${[...this.providerMap.keys()].join(', ')}`,
-    );
+    this.logger.log(`Registered auth providers: ${[...this.providerMap.keys()].join(', ')}`);
   }
 
   /**

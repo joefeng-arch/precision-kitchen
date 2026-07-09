@@ -39,12 +39,45 @@ const RECIPES: SeedRecipe[] = [
     scalingProfile: 'bakers_percentage',
     baseServings: 1,
     ingredients: [
-      { customName: '面粉', amount: '500', unit: 'g', scalingRole: 'anchor', percentageValue: '100', groupName: '主料' },
-      { customName: '水', amount: '325', unit: 'g', scalingRole: 'percentage', percentageValue: '65', groupName: '主料' },
-      { customName: '盐', amount: '10', unit: 'g', scalingRole: 'percentage', percentageValue: '2', groupName: '调味' },
-      { customName: '酵母', amount: '5', unit: 'g', scalingRole: 'percentage', percentageValue: '1', groupName: '调味' },
+      {
+        customName: '面粉',
+        amount: '500',
+        unit: 'g',
+        scalingRole: 'anchor',
+        percentageValue: '100',
+        groupName: '主料',
+      },
+      {
+        customName: '水',
+        amount: '325',
+        unit: 'g',
+        scalingRole: 'percentage',
+        percentageValue: '65',
+        groupName: '主料',
+      },
+      {
+        customName: '盐',
+        amount: '10',
+        unit: 'g',
+        scalingRole: 'percentage',
+        percentageValue: '2',
+        groupName: '调味',
+      },
+      {
+        customName: '酵母',
+        amount: '5',
+        unit: 'g',
+        scalingRole: 'percentage',
+        percentageValue: '1',
+        groupName: '调味',
+      },
     ],
-    steps: ['混合面粉与水，静置 30 分钟（autolyse）。', '加入盐和酵母，揉至扩展阶段。', '基础发酵 1 小时，整形后二次发酵 40 分钟。', '烤箱 220°C 烤 25 分钟。'],
+    steps: [
+      '混合面粉与水，静置 30 分钟（autolyse）。',
+      '加入盐和酵母，揉至扩展阶段。',
+      '基础发酵 1 小时，整形后二次发酵 40 分钟。',
+      '烤箱 220°C 烤 25 分钟。',
+    ],
   },
   {
     title: '[测试] 手冲咖啡 1:15',
@@ -52,23 +85,69 @@ const RECIPES: SeedRecipe[] = [
     scalingProfile: 'ratio_based',
     baseServings: 1,
     ingredients: [
-      { customName: '咖啡粉', amount: '20', unit: 'g', scalingRole: 'anchor', ratioValue: '1', groupName: '主料' },
-      { customName: '水', amount: '300', unit: 'g', scalingRole: 'ratio_linked', ratioValue: '15', groupName: '主料' },
+      {
+        customName: '咖啡粉',
+        amount: '20',
+        unit: 'g',
+        scalingRole: 'anchor',
+        ratioValue: '1',
+        groupName: '主料',
+      },
+      {
+        customName: '水',
+        amount: '300',
+        unit: 'g',
+        scalingRole: 'ratio_linked',
+        ratioValue: '15',
+        groupName: '主料',
+      },
     ],
-    steps: ['研磨咖啡豆至中细粉。', '注入两倍粉重的水闷蒸 30 秒。', '分段注水至总量，总时长控制在 2 分 30 秒左右。'],
+    steps: [
+      '研磨咖啡豆至中细粉。',
+      '注入两倍粉重的水闷蒸 30 秒。',
+      '分段注水至总量，总时长控制在 2 分 30 秒左右。',
+    ],
   },
   {
     title: '[测试] 珍珠奶茶',
-    description: 'multi_ratio 测试配方：tea_base 组（茶:水 1:4）联动，糖按热水量的百分比联动（非组总量）。',
+    description:
+      'multi_ratio 测试配方：tea_base 组（茶:水 1:4）联动，糖按热水量的百分比联动（非组总量）。',
     scalingProfile: 'multi_ratio',
     baseServings: 1,
     ingredients: [
-      { customName: '茶叶', amount: '100', unit: 'g', scalingRole: 'ratio_linked', ratioGroup: 'tea_base', ratioValue: '1', groupName: '主料' },
-      { customName: '热水', amount: '400', unit: 'g', scalingRole: 'ratio_linked', ratioGroup: 'tea_base', ratioValue: '4', groupName: '主料' },
-      { customName: '糖', amount: '40', unit: 'g', scalingRole: 'percentage', percentageValue: '10', groupName: '调味' },
+      {
+        customName: '茶叶',
+        amount: '100',
+        unit: 'g',
+        scalingRole: 'ratio_linked',
+        ratioGroup: 'tea_base',
+        ratioValue: '1',
+        groupName: '主料',
+      },
+      {
+        customName: '热水',
+        amount: '400',
+        unit: 'g',
+        scalingRole: 'ratio_linked',
+        ratioGroup: 'tea_base',
+        ratioValue: '4',
+        groupName: '主料',
+      },
+      {
+        customName: '糖',
+        amount: '40',
+        unit: 'g',
+        scalingRole: 'percentage',
+        percentageValue: '10',
+        groupName: '调味',
+      },
     ],
     percentBaseAnchor: '热水',
-    steps: ['热水冲泡茶叶，浸泡 5 分钟后滤出茶汤。', '按比例加入糖，趁热搅拌至溶解。', '加入珍珠和冰块即可。'],
+    steps: [
+      '热水冲泡茶叶，浸泡 5 分钟后滤出茶汤。',
+      '按比例加入糖，趁热搅拌至溶解。',
+      '加入珍珠和冰块即可。',
+    ],
   },
 ];
 
@@ -119,7 +198,12 @@ export async function seedScalingProfileRecipes(ds: DataSource): Promise<void> {
       skipped++;
       if (data.percentBaseAnchor) {
         const existingIngredients = await riRepo.find({ where: { recipeId: exists.id } });
-        await applyPercentBaseAnchor(recipeRepo, exists.id, data.percentBaseAnchor, existingIngredients);
+        await applyPercentBaseAnchor(
+          recipeRepo,
+          exists.id,
+          data.percentBaseAnchor,
+          existingIngredients,
+        );
       }
       continue;
     }

@@ -54,14 +54,10 @@ export class UserIngredientsService {
 
     // 2) category names (from items' own categoryId)
     const catIds = Array.from(
-      new Set(
-        items.map((i) => i.categoryId).filter((v): v is number => typeof v === 'number'),
-      ),
+      new Set(items.map((i) => i.categoryId).filter((v): v is number => typeof v === 'number')),
     );
     const cats =
-      catIds.length > 0
-        ? await this.categories.find({ where: { id: In(catIds) } as any })
-        : [];
+      catIds.length > 0 ? await this.categories.find({ where: { id: In(catIds) } as any }) : [];
     const catById = new Map(cats.map((c) => [c.id, c]));
 
     return items.map((i) => {

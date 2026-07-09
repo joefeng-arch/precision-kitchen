@@ -109,8 +109,12 @@ describe('AuthService.login("apple") 端到端签发 JWT（DB 层 mock）', () =
     const jwt = new JwtService({ secret: 'test-secret', signOptions: { expiresIn: '7d' } });
 
     const savedUser: any = {
-      id: 'user-a1', openid: null, role: 'user',
-      nickname: 'Joe Feng', avatar: null, lastLoginAt: null,
+      id: 'user-a1',
+      openid: null,
+      role: 'user',
+      nickname: 'Joe Feng',
+      avatar: null,
+      lastLoginAt: null,
     };
     const usersMock: any = {
       upsertByExternalId: jest.fn().mockResolvedValue(savedUser),

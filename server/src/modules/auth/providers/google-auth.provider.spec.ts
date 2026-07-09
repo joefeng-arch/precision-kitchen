@@ -125,8 +125,12 @@ describe('AuthService.login("google") 端到端签发 JWT（DB 层 mock）', () 
     const jwt = new JwtService({ secret: 'test-secret', signOptions: { expiresIn: '7d' } });
 
     const savedUser: any = {
-      id: 'user-g1', openid: null, role: 'user',
-      nickname: 'Joe G', avatar: null, lastLoginAt: null,
+      id: 'user-g1',
+      openid: null,
+      role: 'user',
+      nickname: 'Joe G',
+      avatar: null,
+      lastLoginAt: null,
     };
     const usersMock: any = {
       upsertByExternalId: jest.fn().mockResolvedValue(savedUser),

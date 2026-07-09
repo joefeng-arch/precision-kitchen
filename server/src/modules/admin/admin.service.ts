@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { paginate } from '../../common/dto/pagination.dto';
@@ -34,7 +30,8 @@ export class AdminService {
   constructor(
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Recipe) private readonly recipes: Repository<Recipe>,
-    @InjectRepository(RecipeIngredient) private readonly recipeIngredients: Repository<RecipeIngredient>,
+    @InjectRepository(RecipeIngredient)
+    private readonly recipeIngredients: Repository<RecipeIngredient>,
     @InjectRepository(RecipeStep) private readonly recipeSteps: Repository<RecipeStep>,
     @InjectRepository(RecipeCategory) private readonly recipeCategories: Repository<RecipeCategory>,
     @InjectRepository(CookingLog) private readonly logs: Repository<CookingLog>,
@@ -67,18 +64,9 @@ export class AdminService {
       this.recipes.count({ where: { status: 'published' } }),
       this.recipes.count({ where: { status: 'draft' } }),
       this.logs.count(),
-      this.users
-        .createQueryBuilder('u')
-        .where('u.createdAt >= :since', { since })
-        .getCount(),
-      this.recipes
-        .createQueryBuilder('r')
-        .where('r.createdAt >= :since', { since })
-        .getCount(),
-      this.logs
-        .createQueryBuilder('l')
-        .where('l.createdAt >= :since', { since })
-        .getCount(),
+      this.users.createQueryBuilder('u').where('u.createdAt >= :since', { since }).getCount(),
+      this.recipes.createQueryBuilder('r').where('r.createdAt >= :since', { since }).getCount(),
+      this.logs.createQueryBuilder('l').where('l.createdAt >= :since', { since }).getCount(),
       this.ingredients.count(),
       this.categories.count({ where: { ownerId: IsNull() } }),
     ]);
@@ -100,7 +88,17 @@ export class AdminService {
   /* ═══════════════════════ Recipes ═══════════════════════ */
 
   async listRecipes(query: AdminListRecipesDto) {
-    const { page = 1, pageSize = 20, keyword, status, authorId, categoryId, isFeatured, dateFrom, dateTo } = query;
+    const {
+      page = 1,
+      pageSize = 20,
+      keyword,
+      status,
+      authorId,
+      categoryId,
+      isFeatured,
+      dateFrom,
+      dateTo,
+    } = query;
 
     const qb = this.recipes
       .createQueryBuilder('r')
@@ -108,11 +106,8 @@ export class AdminService {
       .addSelect(['author.id', 'author.nickname'])
       .leftJoin(Category, 'cat', 'cat.id = r.categoryId')
       .addSelect(['cat.name'])
-      .addSelect((sq) =>
-        sq
-          .select('COUNT(*)')
-          .from(Favorite, 'fav')
-          .where('fav.recipeId = r.id'),
+      .addSelect(
+        (sq) => sq.select('COUNT(*)').from(Favorite, 'fav').where('fav.recipeId = r.id'),
         'favoriteCount',
       );
 
@@ -298,23 +293,24 @@ export class AdminService {
 
     return this.dataSource.transaction(async (manager) => {
       // Update scalar fields
-      const {
-        ingredients: dtoIngredients,
-        steps: dtoSteps,
-        categoryIds,
-        ...scalarFields
-      } = dto;
+      const { ingredients: dtoIngredients, steps: dtoSteps, categoryIds, ...scalarFields } = dto;
 
       // Only assign defined fields
       const updateData: Partial<Recipe> = {};
       if (scalarFields.title !== undefined) updateData.title = scalarFields.title;
-      if (scalarFields.description !== undefined) updateData.description = scalarFields.description ?? null;
-      if (scalarFields.coverImage !== undefined) updateData.coverImage = scalarFields.coverImage ?? null;
-      if (scalarFields.categoryId !== undefined) updateData.categoryId = scalarFields.categoryId ?? null;
-      if (scalarFields.mealSceneId !== undefined) updateData.mealSceneId = scalarFields.mealSceneId ?? null;
-      if (scalarFields.baseServings !== undefined) updateData.baseServings = scalarFields.baseServings;
+      if (scalarFields.description !== undefined)
+        updateData.description = scalarFields.description ?? null;
+      if (scalarFields.coverImage !== undefined)
+        updateData.coverImage = scalarFields.coverImage ?? null;
+      if (scalarFields.categoryId !== undefined)
+        updateData.categoryId = scalarFields.categoryId ?? null;
+      if (scalarFields.mealSceneId !== undefined)
+        updateData.mealSceneId = scalarFields.mealSceneId ?? null;
+      if (scalarFields.baseServings !== undefined)
+        updateData.baseServings = scalarFields.baseServings;
       if (scalarFields.difficulty !== undefined) updateData.difficulty = scalarFields.difficulty;
-      if (scalarFields.totalMinutes !== undefined) updateData.totalMinutes = scalarFields.totalMinutes ?? null;
+      if (scalarFields.totalMinutes !== undefined)
+        updateData.totalMinutes = scalarFields.totalMinutes ?? null;
       if (scalarFields.status !== undefined) updateData.status = scalarFields.status;
       if (scalarFields.tags !== undefined) updateData.tags = scalarFields.tags ?? [];
       if (scalarFields.isPublic !== undefined) updateData.isPublic = scalarFields.isPublic;
@@ -433,18 +429,12 @@ export class AdminService {
 
     const qb = this.users
       .createQueryBuilder('u')
-      .addSelect((sq) =>
-        sq
-          .select('COUNT(*)')
-          .from(Recipe, 'r')
-          .where('r.authorId = u.id'),
+      .addSelect(
+        (sq) => sq.select('COUNT(*)').from(Recipe, 'r').where('r.authorId = u.id'),
         'recipeCount',
       )
-      .addSelect((sq) =>
-        sq
-          .select('COUNT(*)')
-          .from(CookingLog, 'cl')
-          .where('cl.userId = u.id'),
+      .addSelect(
+        (sq) => sq.select('COUNT(*)').from(CookingLog, 'cl').where('cl.userId = u.id'),
         'cookingCount',
       );
 
@@ -618,7 +608,8 @@ export class AdminService {
           // Update existing
           if (row.categoryId !== undefined) existing.categoryId = row.categoryId ?? null;
           if (row.defaultUnit) existing.defaultUnit = row.defaultUnit;
-          if (row.referencePrice !== undefined) existing.referencePrice = row.referencePrice ?? null;
+          if (row.referencePrice !== undefined)
+            existing.referencePrice = row.referencePrice ?? null;
           if (row.referenceUnit !== undefined) existing.referenceUnit = row.referenceUnit ?? null;
           if (row.aliases) existing.aliases = row.aliases;
           if (row.calories !== undefined) existing.calories = row.calories ?? null;
@@ -658,9 +649,7 @@ export class AdminService {
   async listCategories(query: AdminListCategoriesDto) {
     const { page = 1, pageSize = 20, keyword, type } = query;
 
-    const qb = this.categories
-      .createQueryBuilder('cat')
-      .where('cat.ownerId IS NULL'); // system categories only
+    const qb = this.categories.createQueryBuilder('cat').where('cat.ownerId IS NULL'); // system categories only
 
     if (type) qb.andWhere('cat.type = :type', { type });
     if (keyword) qb.andWhere('cat.name ILIKE :keyword', { keyword: `%${keyword}%` });

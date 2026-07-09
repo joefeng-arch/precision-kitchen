@@ -9,30 +9,30 @@ import { ScalingService, ScaledIngredientItem } from '../recipes/scaling.service
 import { CanonicalUnit, normalizeUnit, prettyAmount } from './unit-converter';
 
 export type MatchStatus =
-  | 'ok'              // 匹配且库存足够
-  | 'short'           // 匹配但库存不足
-  | 'unit_mismatch'   // 匹配到食材但单位无法换算
-  | 'no_stock'        // 匹配到食材但未填库存
-  | 'unmatched';      // 食材库里没有这个食材
+  | 'ok' // 匹配且库存足够
+  | 'short' // 匹配但库存不足
+  | 'unit_mismatch' // 匹配到食材但单位无法换算
+  | 'no_stock' // 匹配到食材但未填库存
+  | 'unmatched'; // 食材库里没有这个食材
 
 export interface IngredientMatch {
   recipe: {
     name: string;
-    amount: number;       // 菜谱用量（canonical）
+    amount: number; // 菜谱用量（canonical）
     displayAmount: string; // 友好展示
     unit: CanonicalUnit | string;
   };
   userIngredient?: {
     id: number;
     name: string;
-    stockAmount: number;        // 当前库存（canonical）
+    stockAmount: number; // 当前库存（canonical）
     stockUnit: CanonicalUnit | string;
     displayStock: string;
-    unitPrice: number;          // 单价（按 priceUnit）
+    unitPrice: number; // 单价（按 priceUnit）
     priceUnit: string;
   };
   status: MatchStatus;
-  deficit?: number;     // canonical 单位下的缺口
+  deficit?: number; // canonical 单位下的缺口
   estimatedCost?: number; // 这一项的估算成本（CNY）
 }
 
@@ -51,7 +51,7 @@ export interface DeductionResult extends DeductionPreview {
     displayAmount: string;
     estimatedCost: number;
   }>;
-  undoToken: string;   // 客户端用这个调撤销
+  undoToken: string; // 客户端用这个调撤销
   undoExpiresAt: string; // ISO 时间戳
 }
 
@@ -92,7 +92,9 @@ export class StockDeductionService {
     const scaled = await this.scaling.scale(recipeId, servings);
     const pantry = await this.userIngredients.find({ where: { userId } });
     const ingIds = [
-      ...scaled.ingredients.map((i) => i.ingredientId).filter((v): v is number => typeof v === 'number'),
+      ...scaled.ingredients
+        .map((i) => i.ingredientId)
+        .filter((v): v is number => typeof v === 'number'),
       ...pantry.map((p) => p.ingredientId).filter((v): v is number => typeof v === 'number'),
     ];
     const nameMap = await this.loadPublicNames(ingIds);
@@ -111,7 +113,9 @@ export class StockDeductionService {
       const repo = mgr.getRepository(UserIngredient);
       const pantry = await repo.find({ where: { userId } });
       const ingIds = [
-        ...scaled.ingredients.map((i) => i.ingredientId).filter((v): v is number => typeof v === 'number'),
+        ...scaled.ingredients
+          .map((i) => i.ingredientId)
+          .filter((v): v is number => typeof v === 'number'),
         ...pantry.map((p) => p.ingredientId).filter((v): v is number => typeof v === 'number'),
       ];
       const nameMap = await this.loadPublicNames(ingIds);
@@ -218,7 +222,9 @@ export class StockDeductionService {
     for (const si of scaledIngredients) {
       const recipeName =
         si.customName ||
-        (si.ingredientId != null ? nameMap.get(si.ingredientId) ?? `食材#${si.ingredientId}` : '未命名');
+        (si.ingredientId != null
+          ? (nameMap.get(si.ingredientId) ?? `食材#${si.ingredientId}`)
+          : '未命名');
       const recipeNorm = normalizeUnit(si.scaledAmount, si.unit);
 
       // 1) 优先 ingredientId 精确匹配
@@ -264,7 +270,7 @@ export class StockDeductionService {
       const userName =
         matched.customName ||
         (matched.ingredientId != null
-          ? nameMap.get(matched.ingredientId) ?? `食材#${matched.ingredientId}`
+          ? (nameMap.get(matched.ingredientId) ?? `食材#${matched.ingredientId}`)
           : `食材#${matched.id}`);
       const unitPrice = Number(matched.unitPrice);
 

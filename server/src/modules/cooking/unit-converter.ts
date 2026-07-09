@@ -74,7 +74,10 @@ function clean(u: string | null | undefined): string {
   return (u ?? '').toString().trim().toLowerCase();
 }
 
-export function normalizeUnit(amount: number, unit: string | null | undefined): NormalizedAmount | null {
+export function normalizeUnit(
+  amount: number,
+  unit: string | null | undefined,
+): NormalizedAmount | null {
   if (!isFinite(amount)) return null;
   const u = clean(unit);
   if (!u) return null;

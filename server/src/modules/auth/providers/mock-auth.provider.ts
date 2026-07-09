@@ -28,15 +28,11 @@ export class MockAuthProvider implements AuthProvider {
   async authenticate(credentials: AuthCredentials): Promise<AuthResult> {
     const env = this.config.get<string>('NODE_ENV', 'development');
     const allowMock =
-      this.config.get<string>(
-        'ALLOW_MOCK_LOGIN',
-        env === 'production' ? 'false' : 'true',
-      ) === 'true';
+      this.config.get<string>('ALLOW_MOCK_LOGIN', env === 'production' ? 'false' : 'true') ===
+      'true';
 
     if (!allowMock) {
-      throw new UnauthorizedException(
-        'Mock 登录已禁用（ALLOW_MOCK_LOGIN!=true）',
-      );
+      throw new UnauthorizedException('Mock 登录已禁用（ALLOW_MOCK_LOGIN!=true）');
     }
 
     const seed = (credentials.code || 'dev').trim() || 'dev';

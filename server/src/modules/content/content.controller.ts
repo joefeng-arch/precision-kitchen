@@ -23,7 +23,7 @@ if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
 
 @ApiTags('content')
 @ApiBearerAuth()
-@UseGuards(AuthGuard(['jwt', 'admin-jwt']))  // 用户 token 和管理员 token 都放行
+@UseGuards(AuthGuard(['jwt', 'admin-jwt'])) // 用户 token 和管理员 token 都放行
 @Controller('content')
 export class ContentController {
   constructor(private readonly svc: ContentCheckService) {}
@@ -65,7 +65,11 @@ export class ContentController {
       return result;
     } finally {
       // 检查完立即删除临时文件（这个接口仅做检查，不保留文件）
-      try { unlinkSync(filePath); } catch { /* ignore */ }
+      try {
+        unlinkSync(filePath);
+      } catch {
+        /* ignore */
+      }
     }
   }
 }

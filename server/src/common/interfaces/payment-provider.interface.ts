@@ -22,18 +22,18 @@ export type PaymentChannel = 'wechat' | 'apple_iap' | 'google_play';
 
 /** 订单状态 */
 export type OrderStatus =
-  | 'pending'     // 待支付
-  | 'paid'        // 已支付
-  | 'refunding'   // 退款中
-  | 'refunded'    // 已退款
-  | 'cancelled'   // 已取消
-  | 'failed';     // 支付失败
+  | 'pending' // 待支付
+  | 'paid' // 已支付
+  | 'refunding' // 退款中
+  | 'refunded' // 已退款
+  | 'cancelled' // 已取消
+  | 'failed'; // 支付失败
 
 /** 商品类型 */
 export type ProductType =
-  | 'subscription'  // 订阅（VIP 会员）
-  | 'consumable'    // 消耗型（积分充值等）
-  | 'one_time';     // 一次性购买
+  | 'subscription' // 订阅（VIP 会员）
+  | 'consumable' // 消耗型（积分充值等）
+  | 'one_time'; // 一次性购买
 
 // ─── 请求/响应结构 ────────────────────────────────────────────
 
