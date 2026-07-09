@@ -7,7 +7,7 @@ import { Ingredient } from '../ingredients/entities/ingredient.entity';
 import { UserIngredient } from '../ingredients/entities/user-ingredient.entity';
 import { Category } from '../categories/entities/category.entity';
 import { calculateScaledAmount, roundAmount } from '../../common/utils/scaling-calculator';
-import { toBase, getCategory as getUnitCategory } from '../../common/utils/unit-converter';
+import { toBase } from '../../common/utils/unit-converter';
 
 // ─── Response types ──────────────────────────────────────────
 

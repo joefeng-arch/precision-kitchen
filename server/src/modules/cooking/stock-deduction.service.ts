@@ -1,8 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
-import { In } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { Ingredient } from '../ingredients/entities/ingredient.entity';
 import { UserIngredient } from '../ingredients/entities/user-ingredient.entity';
 import { ScalingService, ScaledIngredientItem } from '../recipes/scaling.service';
