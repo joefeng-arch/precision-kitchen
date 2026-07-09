@@ -66,7 +66,9 @@ import { HealthController } from './health.controller';
           },
           reconnectOnError: (err: Error) => err.message.includes('READONLY'),
           enableOfflineQueue: false,
-          lazyConnect: true,
+          // 不用 lazyConnect：惰性连接 + 关闭离线队列的组合会让每次启动后的
+          // 第一条缓存命令必然抛 "Stream isn't writeable"（失败本身才触发连接）。
+          // 与 TimersRedis 一致，在启动期就建立连接。
         });
         // Attach error handler to the underlying ioredis client to prevent unhandled error events
         const client = (store as any).client ?? (store as any).getClient?.();
