@@ -18,9 +18,7 @@ export class AdminJwtStrategy extends PassportStrategy(Strategy, 'admin-jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey:
-        config.get<string>('ADMIN_JWT_SECRET') ??
-        'admin-change-me-in-production',
+      secretOrKey: config.get<string>('ADMIN_JWT_SECRET') ?? 'admin-change-me-in-production',
       audience: 'admin',
     });
   }

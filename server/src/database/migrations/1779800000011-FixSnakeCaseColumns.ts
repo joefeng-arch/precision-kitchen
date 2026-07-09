@@ -31,9 +31,13 @@ export class FixSnakeCaseColumns1779800000011 implements MigrationInterface {
 
     // Recreate indexes with new column names
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_share_codes_recipe_id"`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_share_codes_recipeId" ON share_codes ("recipeId")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_share_codes_recipeId" ON share_codes ("recipeId")`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS idx_meal_plans_user_date`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_meal_plans_userId_planDate" ON meal_plans ("userId", "planDate")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "IDX_meal_plans_userId_planDate" ON meal_plans ("userId", "planDate")`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -44,7 +48,9 @@ export class FixSnakeCaseColumns1779800000011 implements MigrationInterface {
     await queryRunner.query(`ALTER TABLE meal_plans RENAME COLUMN "mealType" TO "meal_type"`);
     await queryRunner.query(`ALTER TABLE meal_plans RENAME COLUMN "planDate" TO "plan_date"`);
     await queryRunner.query(`ALTER TABLE meal_plans RENAME COLUMN "userId" TO "user_id"`);
-    await queryRunner.query(`CREATE INDEX idx_meal_plans_user_date ON meal_plans(user_id, plan_date)`);
+    await queryRunner.query(
+      `CREATE INDEX idx_meal_plans_user_date ON meal_plans(user_id, plan_date)`,
+    );
 
     // Revert share_codes
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_share_codes_recipeId"`);

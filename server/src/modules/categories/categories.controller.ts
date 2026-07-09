@@ -17,11 +17,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../../common/guards/optional-jwt-auth.guard';
 import { AdminJwtAuthGuard } from '../admin/guards/admin-jwt-auth.guard';
 import { CategoriesService } from './categories.service';
-import {
-  CreateCategoryDto,
-  ListCategoriesDto,
-  UpdateCategoryDto,
-} from './dto/category.dto';
+import { CreateCategoryDto, ListCategoriesDto, UpdateCategoryDto } from './dto/category.dto';
 
 @ApiTags('categories')
 @Controller('categories')

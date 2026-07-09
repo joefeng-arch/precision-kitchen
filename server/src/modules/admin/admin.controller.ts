@@ -91,28 +91,19 @@ export class AdminController {
 
   @Patch('recipes/:id')
   @ApiOperation({ summary: '更新菜谱（含食材/步骤全量替换）' })
-  updateRecipe(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: AdminUpdateRecipeDto,
-  ) {
+  updateRecipe(@Param('id', ParseUUIDPipe) id: string, @Body() dto: AdminUpdateRecipeDto) {
     return this.service.updateRecipe(id, dto);
   }
 
   @Patch('recipes/:id/status')
   @ApiOperation({ summary: '改菜谱状态（审核/下架）' })
-  setRecipeStatus(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: SetRecipeStatusDto,
-  ) {
+  setRecipeStatus(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetRecipeStatusDto) {
     return this.service.setRecipeStatus(id, dto.status);
   }
 
   @Put('recipes/:id/feature')
   @ApiOperation({ summary: '设置/取消官方推荐' })
-  setFeatured(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: SetFeaturedDto,
-  ) {
+  setFeatured(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetFeaturedDto) {
     return this.service.setFeatured(id, dto.isFeatured ?? true);
   }
 
@@ -150,28 +141,19 @@ export class AdminController {
 
   @Patch('users/:id/role')
   @ApiOperation({ summary: '设置用户角色（user / vip）' })
-  setUserRole(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: SetUserRoleDto,
-  ) {
+  setUserRole(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetUserRoleDto) {
     return this.service.setUserRole(id, dto.role);
   }
 
   @Patch('users/:id/status')
   @ApiOperation({ summary: '封禁/解封用户' })
-  setUserStatus(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: SetUserStatusDto,
-  ) {
+  setUserStatus(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetUserStatusDto) {
     return this.service.setUserStatus(id, dto.status);
   }
 
   @Post('users/:id/vip')
   @ApiOperation({ summary: '设置/移除 VIP（传 null 移除）' })
-  setVip(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: SetVipDto,
-  ) {
+  setVip(@Param('id', ParseUUIDPipe) id: string, @Body() dto: SetVipDto) {
     const expiresAt = dto.vipExpiresAt ? new Date(dto.vipExpiresAt) : null;
     return this.service.setVip(id, expiresAt);
   }
@@ -204,10 +186,7 @@ export class AdminController {
 
   @Patch('ingredients/:id')
   @ApiOperation({ summary: '更新食材' })
-  updateIngredient(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AdminUpdateIngredientDto,
-  ) {
+  updateIngredient(@Param('id', ParseIntPipe) id: number, @Body() dto: AdminUpdateIngredientDto) {
     return this.service.updateIngredient(id, dto);
   }
 
@@ -231,22 +210,28 @@ export class AdminController {
     // Parse header
     const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
 
-    const rows = lines.slice(1).map((line) => {
-      const cols = line.split(',').map((c) => c.trim());
-      const row: Record<string, any> = {};
-      headers.forEach((h, i) => {
-        row[h] = cols[i] ?? '';
-      });
-      return {
-        name: row['name'] || row['名称'] || '',
-        categoryId: row['categoryid'] || row['分类id'] ? parseInt(row['categoryid'] || row['分类id'], 10) : undefined,
-        defaultUnit: row['defaultunit'] || row['默认单位'] || 'g',
-        referencePrice: row['referenceprice'] || row['参考单价'] || undefined,
-        referenceUnit: row['referenceunit'] || row['参考单位'] || undefined,
-        aliases: (row['aliases'] || row['别名'] || '').split('|').filter(Boolean),
-        calories: row['calories'] || row['热量'] || undefined,
-      };
-    }).filter((r) => r.name);
+    const rows = lines
+      .slice(1)
+      .map((line) => {
+        const cols = line.split(',').map((c) => c.trim());
+        const row: Record<string, any> = {};
+        headers.forEach((h, i) => {
+          row[h] = cols[i] ?? '';
+        });
+        return {
+          name: row['name'] || row['名称'] || '',
+          categoryId:
+            row['categoryid'] || row['分类id']
+              ? parseInt(row['categoryid'] || row['分类id'], 10)
+              : undefined,
+          defaultUnit: row['defaultunit'] || row['默认单位'] || 'g',
+          referencePrice: row['referenceprice'] || row['参考单价'] || undefined,
+          referenceUnit: row['referenceunit'] || row['参考单位'] || undefined,
+          aliases: (row['aliases'] || row['别名'] || '').split('|').filter(Boolean),
+          calories: row['calories'] || row['热量'] || undefined,
+        };
+      })
+      .filter((r) => r.name);
 
     return this.service.batchImportIngredients(rows);
   }
@@ -267,19 +252,13 @@ export class AdminController {
 
   @Patch('categories/:id')
   @ApiOperation({ summary: '更新分类（名称/图标/排序/启用状态）' })
-  updateCategory(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: AdminUpdateCategoryDto,
-  ) {
+  updateCategory(@Param('id', ParseIntPipe) id: number, @Body() dto: AdminUpdateCategoryDto) {
     return this.service.updateCategory(id, dto);
   }
 
   @Put('categories/:id/enabled')
   @ApiOperation({ summary: '启用/禁用分类' })
-  setCategoryEnabled(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: SetCategoryEnabledDto,
-  ) {
+  setCategoryEnabled(@Param('id', ParseIntPipe) id: number, @Body() dto: SetCategoryEnabledDto) {
     return this.service.setCategoryEnabled(id, dto.enabled);
   }
 

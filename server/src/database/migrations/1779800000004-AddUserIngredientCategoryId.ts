@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddUserIngredientCategoryId1779800000004 implements MigrationInterface {
   name = 'AddUserIngredientCategoryId1779800000004';
@@ -16,8 +16,6 @@ export class AddUserIngredientCategoryId1779800000004 implements MigrationInterf
     await queryRunner.query(
       `ALTER TABLE "user_ingredients" DROP CONSTRAINT IF EXISTS "FK_user_ingredients_category"`,
     );
-    await queryRunner.query(
-      `ALTER TABLE "user_ingredients" DROP COLUMN IF EXISTS "categoryId"`,
-    );
+    await queryRunner.query(`ALTER TABLE "user_ingredients" DROP COLUMN IF EXISTS "categoryId"`);
   }
 }

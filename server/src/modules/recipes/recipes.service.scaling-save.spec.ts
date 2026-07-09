@@ -101,9 +101,29 @@ function makeService() {
 const STEPS = [{ stepNumber: 1, description: '按步骤操作' }];
 
 const MILK_TEA_INGS = [
-  { customName: '茶叶', amount: 100, unit: 'g', scalingRole: 'ratio_linked' as const, ratioGroup: 'tea_base', ratioValue: 1 },
-  { customName: '热水', amount: 400, unit: 'g', scalingRole: 'ratio_linked' as const, ratioGroup: 'tea_base', ratioValue: 4 },
-  { customName: '糖', amount: 40, unit: 'g', scalingRole: 'percentage' as const, percentageValue: 10 },
+  {
+    customName: '茶叶',
+    amount: 100,
+    unit: 'g',
+    scalingRole: 'ratio_linked' as const,
+    ratioGroup: 'tea_base',
+    ratioValue: 1,
+  },
+  {
+    customName: '热水',
+    amount: 400,
+    unit: 'g',
+    scalingRole: 'ratio_linked' as const,
+    ratioGroup: 'tea_base',
+    ratioValue: 4,
+  },
+  {
+    customName: '糖',
+    amount: 40,
+    unit: 'g',
+    scalingRole: 'percentage' as const,
+    percentageValue: 10,
+  },
 ];
 
 describe('RecipesService.create — 缩放字段落库', () => {
@@ -114,7 +134,13 @@ describe('RecipesService.create — 缩放字段落库', () => {
       scalingProfile: 'bakers_percentage',
       ingredients: [
         { customName: '面粉', amount: 500, unit: 'g', scalingRole: 'anchor', percentageValue: 100 },
-        { customName: '水', amount: 325, unit: 'g', scalingRole: 'percentage', percentageValue: 65 },
+        {
+          customName: '水',
+          amount: 325,
+          unit: 'g',
+          scalingRole: 'percentage',
+          percentageValue: 65,
+        },
       ],
       steps: STEPS,
     } as any);
@@ -147,7 +173,13 @@ describe('RecipesService.create — 缩放字段落库', () => {
         title: '假面包',
         scalingProfile: 'bakers_percentage',
         ingredients: [
-          { customName: '水', amount: 325, unit: 'g', scalingRole: 'percentage', percentageValue: 65 },
+          {
+            customName: '水',
+            amount: 325,
+            unit: 'g',
+            scalingRole: 'percentage',
+            percentageValue: 65,
+          },
         ],
         steps: STEPS,
       } as any),
@@ -241,8 +273,22 @@ describe('RecipesService.update — 缩放字段与 baseAnchor 悬垂防护', ()
     const { svc, store } = await seedMilkTea();
     await svc.update('u1', 'r-1', {
       ingredients: [
-        { customName: '茶叶', amount: 100, unit: 'g', scalingRole: 'ratio_linked', ratioGroup: 'tea_base', ratioValue: 1 },
-        { customName: '热水', amount: 400, unit: 'g', scalingRole: 'ratio_linked', ratioGroup: 'tea_base', ratioValue: 4 },
+        {
+          customName: '茶叶',
+          amount: 100,
+          unit: 'g',
+          scalingRole: 'ratio_linked',
+          ratioGroup: 'tea_base',
+          ratioValue: 1,
+        },
+        {
+          customName: '热水',
+          amount: 400,
+          unit: 'g',
+          scalingRole: 'ratio_linked',
+          ratioGroup: 'tea_base',
+          ratioValue: 4,
+        },
       ],
     } as any);
     expect(store.recipe.baseAnchor).toBeNull();

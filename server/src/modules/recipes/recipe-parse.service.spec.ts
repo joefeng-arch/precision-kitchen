@@ -80,8 +80,20 @@ describe('RecipeParseService — 缩放字段解析', () => {
       scalingProfile: 'multi_ratio',
       percentBase: { ingredientIndex: 1 },
       ingredients: [
-        { name: '茶叶', amount: 100, unit: 'g', scalingRole: 'ratio_linked', ratioGroup: 'tea_base' },
-        { name: '热水', amount: 400, unit: 'g', scalingRole: 'ratio_linked', ratioGroup: 'tea_base' },
+        {
+          name: '茶叶',
+          amount: 100,
+          unit: 'g',
+          scalingRole: 'ratio_linked',
+          ratioGroup: 'tea_base',
+        },
+        {
+          name: '热水',
+          amount: 400,
+          unit: 'g',
+          scalingRole: 'ratio_linked',
+          ratioGroup: 'tea_base',
+        },
         { name: '糖', amount: 40, unit: 'g', scalingRole: 'percentage' },
       ],
       steps: STEPS,
@@ -181,9 +193,7 @@ describe('RecipeParseService — 缩放字段解析', () => {
 
   it('缺 title → 400 解析结果不完整', async () => {
     const { svc } = makeService({ ingredients: [{ name: 'x', amount: 1 }], steps: STEPS });
-    await expect(svc.parseText('u1', 'x'.repeat(30))).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(svc.parseText('u1', 'x'.repeat(30))).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('限流：达到 5 次 → 429；skipRateLimit 跳过', async () => {

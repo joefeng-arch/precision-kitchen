@@ -159,11 +159,7 @@ export class TimersService {
     const elapsedSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
     const remainingSeconds = Math.max(0, state.durationSeconds - elapsedSeconds);
     const status: TimerStatus =
-      state.status === 'paused'
-        ? 'paused'
-        : remainingSeconds === 0
-        ? 'finished'
-        : 'running';
+      state.status === 'paused' ? 'paused' : remainingSeconds === 0 ? 'finished' : 'running';
     return { ...state, status, elapsedSeconds, remainingSeconds, serverTime: now };
   }
 }

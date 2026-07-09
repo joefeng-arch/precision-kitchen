@@ -6,11 +6,7 @@ import { ScalingService } from '../recipes/scaling.service';
 import { User } from '../users/entities/user.entity';
 import { CostCalculatorService } from './cost-calculator.service';
 import { StockDeductionService, DeductionResult } from './stock-deduction.service';
-import {
-  CreateCookingLogDto,
-  ListCookingLogsDto,
-  PreviewCostDto,
-} from './dto/cooking.dto';
+import { CreateCookingLogDto, ListCookingLogsDto, PreviewCostDto } from './dto/cooking.dto';
 import { CookingLogCost } from './entities/cooking-log-cost.entity';
 import { CookingLog } from './entities/cooking-log.entity';
 
@@ -76,7 +72,7 @@ export class CookingService {
         deduction = await this.deduction.deduct(userId, savedLog.id, dto.recipeId, dto.servings);
       } catch (e) {
         // 不抛，给前端一个空回执
-        // eslint-disable-next-line no-console
+
         console.error('[auto-deduct] failed', e);
       }
     }
@@ -107,11 +103,7 @@ export class CookingService {
     return { id };
   }
 
-  private async findOneInTx(
-    mgr: import('typeorm').EntityManager,
-    userId: string,
-    id: string,
-  ) {
+  private async findOneInTx(mgr: import('typeorm').EntityManager, userId: string, id: string) {
     const log = await mgr.findOne(CookingLog, {
       where: { id, userId },
       relations: ['costs'],

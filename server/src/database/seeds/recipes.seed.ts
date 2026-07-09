@@ -66,7 +66,11 @@ const RECIPES: SeedRecipe[] = [
     steps: [
       { description: '番茄切块，鸡蛋打散加少许盐搅匀，葱切葱花。' },
       { description: '热锅冷油，倒入蛋液，中火炒至蓬松凝固，盛出备用。', durationSeconds: 90 },
-      { description: '锅内留底油，下番茄块翻炒出汁，加少许糖中和酸味。', durationSeconds: 180, tips: '加一勺糖可以让味道更柔和' },
+      {
+        description: '锅内留底油，下番茄块翻炒出汁，加少许糖中和酸味。',
+        durationSeconds: 180,
+        tips: '加一勺糖可以让味道更柔和',
+      },
       { description: '倒回炒蛋，加盐调味，翻炒均匀，撒葱花出锅。', durationSeconds: 60 },
     ],
   },
@@ -93,8 +97,15 @@ const RECIPES: SeedRecipe[] = [
       { name: '料酒', amount: 30, unit: 'ml', scaleType: 'sub_linear', groupName: '调味' },
     ],
     steps: [
-      { description: '五花肉切 2cm 见方的块，冷水下锅加料酒、姜片焯水 3 分钟，捞出冲洗干净。', durationSeconds: 300 },
-      { description: '锅烧热放少量油，下冰糖小火炒至焦糖色，下五花肉翻炒上色。', durationSeconds: 240, tips: '冰糖一定要小火慢炒，否则会发苦' },
+      {
+        description: '五花肉切 2cm 见方的块，冷水下锅加料酒、姜片焯水 3 分钟，捞出冲洗干净。',
+        durationSeconds: 300,
+      },
+      {
+        description: '锅烧热放少量油，下冰糖小火炒至焦糖色，下五花肉翻炒上色。',
+        durationSeconds: 240,
+        tips: '冰糖一定要小火慢炒，否则会发苦',
+      },
       { description: '加入葱姜、八角、香叶炒香，烹入料酒、生抽、老抽炒匀。', durationSeconds: 120 },
       { description: '加开水没过肉块，大火烧开转小火炖 50 分钟。', durationSeconds: 3000 },
       { description: '开盖大火收汁至浓稠挂勺即可出锅。', durationSeconds: 300 },
@@ -122,9 +133,15 @@ const RECIPES: SeedRecipe[] = [
       { name: '食用油', amount: 30, unit: 'ml', scaleType: 'sub_linear', groupName: '调味' },
     ],
     steps: [
-      { description: '豆腐切 1.5cm 见方的块，加少许盐用温水浸泡 5 分钟去豆腥。', durationSeconds: 300 },
+      {
+        description: '豆腐切 1.5cm 见方的块，加少许盐用温水浸泡 5 分钟去豆腥。',
+        durationSeconds: 300,
+      },
       { description: '热锅冷油下肉末，炒至变色焦香，盛出备用。', durationSeconds: 180 },
-      { description: '锅内留油下姜蒜末、花椒爆香，加 1 勺豆瓣酱（如有）炒出红油。', durationSeconds: 60 },
+      {
+        description: '锅内留油下姜蒜末、花椒爆香，加 1 勺豆瓣酱（如有）炒出红油。',
+        durationSeconds: 60,
+      },
       { description: '加少许水烧开，下豆腐、肉末，加生抽，小火炖 5 分钟。', durationSeconds: 300 },
       { description: '勾薄芡收汁，撒葱花、花椒粉出锅。', durationSeconds: 60 },
     ],
@@ -149,7 +166,11 @@ const RECIPES: SeedRecipe[] = [
       { name: '食用油', amount: 20, unit: 'ml', scaleType: 'sub_linear', groupName: '调味' },
     ],
     steps: [
-      { description: '土豆去皮切细丝，用清水冲洗两遍去淀粉，沥干。', durationSeconds: 180, tips: '冲水后口感更脆' },
+      {
+        description: '土豆去皮切细丝，用清水冲洗两遍去淀粉，沥干。',
+        durationSeconds: 180,
+        tips: '冲水后口感更脆',
+      },
       { description: '青椒切丝，蒜切末。' },
       { description: '热锅热油下蒜末爆香，倒入土豆丝大火翻炒 1 分钟。', durationSeconds: 60 },
       { description: '加入青椒丝继续翻炒，沿锅边淋醋，加盐调味。', durationSeconds: 90 },
@@ -177,8 +198,15 @@ const RECIPES: SeedRecipe[] = [
       { name: '可乐', amount: 330, unit: 'ml', groupName: '调味' },
     ],
     steps: [
-      { description: '鸡翅两面各划两刀，冷水下锅加料酒姜片焯水 3 分钟，捞出沥干。', durationSeconds: 240 },
-      { description: '锅内放少许油，下鸡翅煎至两面金黄。', durationSeconds: 240, tips: '煎到表皮起焦最香' },
+      {
+        description: '鸡翅两面各划两刀，冷水下锅加料酒姜片焯水 3 分钟，捞出沥干。',
+        durationSeconds: 240,
+      },
+      {
+        description: '锅内放少许油，下鸡翅煎至两面金黄。',
+        durationSeconds: 240,
+        tips: '煎到表皮起焦最香',
+      },
       { description: '下姜片、葱段炒香，加生抽、老抽炒上色。', durationSeconds: 60 },
       { description: '倒入可乐没过鸡翅，大火烧开转中小火炖 15 分钟。', durationSeconds: 900 },
       { description: '开盖大火收汁至浓稠裹住鸡翅即可。', durationSeconds: 180 },
@@ -237,7 +265,9 @@ export async function seedRecipes(ds: DataSource): Promise<void> {
 
   const cats = await catRepo.find();
   const recipeCatMap = new Map(cats.filter((c) => c.type === 'recipe').map((c) => [c.name, c.id]));
-  const mealCatMap = new Map(cats.filter((c) => c.type === 'meal_scene').map((c) => [c.name, c.id]));
+  const mealCatMap = new Map(
+    cats.filter((c) => c.type === 'meal_scene').map((c) => [c.name, c.id]),
+  );
 
   let inserted = 0;
   let skipped = 0;
@@ -256,7 +286,7 @@ export async function seedRecipes(ds: DataSource): Promise<void> {
         description: data.description,
         coverImage: data.coverImage ?? null,
         categoryId: recipeCatMap.get(data.category) ?? null,
-        mealSceneId: data.mealScene ? mealCatMap.get(data.mealScene) ?? null : null,
+        mealSceneId: data.mealScene ? (mealCatMap.get(data.mealScene) ?? null) : null,
         baseServings: data.baseServings,
         difficulty: data.difficulty,
         totalMinutes: data.totalMinutes,

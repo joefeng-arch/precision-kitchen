@@ -59,7 +59,11 @@ export class AdminAuthService {
     };
   }
 
-  async changePassword(adminId: string, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(
+    adminId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
     const admin = await this.repo.findOne({ where: { id: adminId } });
     if (!admin) throw new UnauthorizedException('管理员不存在');
 

@@ -39,9 +39,7 @@ import { RecipeParseService } from '../recipes/recipe-parse.service';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret:
-          config.get<string>('ADMIN_JWT_SECRET') ??
-          'admin-change-me-in-production',
+        secret: config.get<string>('ADMIN_JWT_SECRET') ?? 'admin-change-me-in-production',
         signOptions: {
           expiresIn: config.get<string>('ADMIN_JWT_EXPIRES_IN') ?? '12h',
           audience: 'admin',

@@ -8,11 +8,7 @@
  * 校验失败不抛错：降级 linear_legacy + warnings（用户确认页可见），
  * 脏缩放数据永远进不了库。每条规则镜像 scaling-engine 的守卫条件。
  */
-import {
-  ScalingProfile,
-  ScalingRole,
-  roundToDp,
-} from '../../common/utils/scaling-engine';
+import { ScalingProfile, ScalingRole, roundToDp } from '../../common/utils/scaling-engine';
 
 const PROFILES: readonly ScalingProfile[] = [
   'linear_legacy',
@@ -117,9 +113,7 @@ export function validateAndRecomputeScaling(
     };
   }
   if (!PROFILES.includes(profile as ScalingProfile)) {
-    return fallback(n, [
-      `缩放：未知的缩放模式 "${String(profile)}"，已按普通线性配方处理`,
-    ]);
+    return fallback(n, [`缩放：未知的缩放模式 "${String(profile)}"，已按普通线性配方处理`]);
   }
 
   switch (profile as ScalingProfile) {
@@ -146,9 +140,7 @@ function validateBakers(input: ScalingClassificationInput): ValidatedScalingResu
   const roles = ings.map((i) => roleOf(i.scalingRole));
   const anchorIdxs = roles.flatMap((r, idx) => (r === 'anchor' ? [idx] : []));
   if (anchorIdxs.length === 0) {
-    return fallback(ings.length, [
-      '缩放：未能识别烘焙基准原料（anchor），已按普通线性配方处理',
-    ]);
+    return fallback(ings.length, ['缩放：未能识别烘焙基准原料（anchor），已按普通线性配方处理']);
   }
   if (anchorIdxs.length > 1) {
     return fallback(ings.length, [
@@ -217,7 +209,12 @@ function validateBakers(input: ScalingClassificationInput): ValidatedScalingResu
         `缩放：原料「${ing.name}」相对基准的百分比超出合理范围，分类可能有误，已按普通线性配方处理`,
       ]);
     }
-    out[i] = { scalingRole: 'percentage', percentageValue: pct, ratioGroup: null, ratioValue: null };
+    out[i] = {
+      scalingRole: 'percentage',
+      percentageValue: pct,
+      ratioGroup: null,
+      ratioValue: null,
+    };
   }
 
   return {
@@ -321,22 +318,30 @@ function validateMultiRatio(input: ScalingClassificationInput): ValidatedScaling
           `缩放：比例原料「${ing.name}」缺少分组名（ratioGroup），已按普通线性配方处理`,
         ]);
       }
-      out[i] = { scalingRole: 'ratio_linked', percentageValue: null, ratioGroup: group, ratioValue: null };
+      out[i] = {
+        scalingRole: 'ratio_linked',
+        percentageValue: null,
+        ratioGroup: group,
+        ratioValue: null,
+      };
       const list = groupMembers.get(group) ?? [];
       list.push(i);
       groupMembers.set(group, list);
     } else if (role === 'percentage') {
       percentIdxs.push(i);
-      out[i] = { scalingRole: 'percentage', percentageValue: null, ratioGroup: null, ratioValue: null };
+      out[i] = {
+        scalingRole: 'percentage',
+        percentageValue: null,
+        ratioGroup: null,
+        ratioValue: null,
+      };
     } else {
       out[i] = { scalingRole: 'fixed', percentageValue: null, ratioGroup: null, ratioValue: null };
     }
   }
 
   if (groupMembers.size === 0) {
-    return fallback(ings.length, [
-      '缩放：多组分配方未识别出任何比例组成员，已按普通线性配方处理',
-    ]);
+    return fallback(ings.length, ['缩放：多组分配方未识别出任何比例组成员，已按普通线性配方处理']);
   }
 
   // 逐组重算 parts（组内最小成员 = 1）
@@ -361,7 +366,11 @@ function validateMultiRatio(input: ScalingClassificationInput): ValidatedScaling
       warnings.push(`缩放：比例组「${group}」部分原料无用量，比例取自文本中的比例表述`);
       adjusted = true;
     }
-    if (idxs.some((i) => !(out[i].ratioValue as number > 0) || (out[i].ratioValue as number) > MAX_RATIO)) {
+    if (
+      idxs.some(
+        (i) => !((out[i].ratioValue as number) > 0) || (out[i].ratioValue as number) > MAX_RATIO,
+      )
+    ) {
       return fallback(ings.length, [
         `缩放：比例组「${group}」计算出的比例超出合理范围，已按普通线性配方处理`,
       ]);
@@ -390,7 +399,12 @@ function validateMultiRatio(input: ScalingClassificationInput): ValidatedScaling
           warnings.push(`缩放：原料「${ing.name}」无用量，采用文本中的百分比 ${pct}%`);
           adjusted = true;
         } else {
-          out[i] = { scalingRole: 'fixed', percentageValue: null, ratioGroup: null, ratioValue: null };
+          out[i] = {
+            scalingRole: 'fixed',
+            percentageValue: null,
+            ratioGroup: null,
+            ratioValue: null,
+          };
           warnings.push(`缩放：原料「${ing.name}」无用量也无百分比信息，已按固定用量处理`);
           adjusted = true;
           continue;

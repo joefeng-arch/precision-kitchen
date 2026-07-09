@@ -35,9 +35,7 @@ export class CostCalculatorService {
   ) {}
 
   async calculate(userId: string, scaled: ScaledIngredientItem[]): Promise<CostBreakdown> {
-    const ingredientIds = scaled
-      .map((s) => s.ingredientId)
-      .filter((v): v is number => v !== null);
+    const ingredientIds = scaled.map((s) => s.ingredientId).filter((v): v is number => v !== null);
 
     const [userLib, publicLib] = await Promise.all([
       ingredientIds.length

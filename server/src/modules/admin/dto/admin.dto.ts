@@ -179,7 +179,10 @@ export class AdminCreateOfficialRecipeDto {
   @IsInt()
   categoryId?: number;
 
-  @ApiPropertyOptional({ description: 'Multiple category IDs for recipe_categories junction', type: [Number] })
+  @ApiPropertyOptional({
+    description: 'Multiple category IDs for recipe_categories junction',
+    type: [Number],
+  })
   @IsOptional()
   @IsArray()
   @Type(() => Number)

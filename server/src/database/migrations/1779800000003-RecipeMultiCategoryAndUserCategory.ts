@@ -7,9 +7,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * 3) 新建 recipe_categories 关联表，支持菜谱归多个分类
  *    将已有 recipes.categoryId 数据回填进 recipe_categories（不删旧列，保留向后兼容）
  */
-export class RecipeMultiCategoryAndUserCategory1779800000003
-  implements MigrationInterface
-{
+export class RecipeMultiCategoryAndUserCategory1779800000003 implements MigrationInterface {
   name = 'RecipeMultiCategoryAndUserCategory1779800000003';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -17,9 +15,7 @@ export class RecipeMultiCategoryAndUserCategory1779800000003
     await queryRunner.query(`ALTER TABLE "categories" ADD COLUMN IF NOT EXISTS "ownerId" uuid`);
 
     // 旧唯一索引 → 新唯一索引
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_categories_type_name"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_categories_type_name"`);
     // TypeORM 自动生成名是 hash 的，找不到就忽略，按表内全部 unique 索引一一清理
     const oldIdx = await queryRunner.query(
       `SELECT indexname FROM pg_indexes
@@ -61,9 +57,7 @@ export class RecipeMultiCategoryAndUserCategory1779800000003
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP TABLE IF EXISTS "recipe_categories"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "IDX_categories_type_owner_name"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_categories_type_owner_name"`);
     await queryRunner.query(
       `CREATE UNIQUE INDEX "IDX_categories_type_name" ON "categories" ("type", "name")`,
     );

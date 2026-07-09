@@ -8,9 +8,7 @@ import { ShoppingListController } from './shopping-list.controller';
 import { ShoppingListService } from './shopping-list.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Recipe, Ingredient, UserIngredient, Category]),
-  ],
+  imports: [TypeOrmModule.forFeature([Recipe, Ingredient, UserIngredient, Category])],
   controllers: [ShoppingListController],
   providers: [ShoppingListService],
   exports: [ShoppingListService],

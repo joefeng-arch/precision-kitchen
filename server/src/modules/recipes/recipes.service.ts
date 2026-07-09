@@ -52,7 +52,17 @@ export class RecipesService {
   ) {}
 
   async list(query: ListRecipesDto) {
-    const { page = 1, pageSize = 20, keyword, categoryId, mealSceneId, status, authorId, isPublic, isFeatured } = query;
+    const {
+      page = 1,
+      pageSize = 20,
+      keyword,
+      categoryId,
+      mealSceneId,
+      status,
+      authorId,
+      isPublic,
+      isFeatured,
+    } = query;
     const where: Record<string, unknown> = {};
     if (mealSceneId) where.mealSceneId = mealSceneId;
     if (status) where.status = status;
@@ -123,7 +133,13 @@ export class RecipesService {
         versionCount: 1,
       });
       const saved = await mgr.save(recipe);
-      const savedIngs = await this.replaceChildren(mgr, saved.id, dto.ingredients, dto.steps, profile);
+      const savedIngs = await this.replaceChildren(
+        mgr,
+        saved.id,
+        dto.ingredients,
+        dto.steps,
+        profile,
+      );
       await this.remapBaseAnchor(mgr, saved.id, dto.baseAnchor, savedIngs);
       await this.replaceCategories(
         mgr,
@@ -190,12 +206,12 @@ export class RecipesService {
           this.assertScalingConsistent(effectiveProfile, dto.ingredients, dto.baseAnchor);
         }
 
-        const existingIngs = dto.ingredients === undefined
-          ? await mgr.find(RecipeIngredient, { where: { recipeId: id } })
-          : null;
-        const existingSteps = dto.steps === undefined
-          ? await mgr.find(RecipeStep, { where: { recipeId: id } })
-          : null;
+        const existingIngs =
+          dto.ingredients === undefined
+            ? await mgr.find(RecipeIngredient, { where: { recipeId: id } })
+            : null;
+        const existingSteps =
+          dto.steps === undefined ? await mgr.find(RecipeStep, { where: { recipeId: id } }) : null;
         const savedIngs = await this.replaceChildren(
           mgr,
           recipe.id,
@@ -218,8 +234,7 @@ export class RecipesService {
               Recipe,
               { id: recipe.id },
               {
-                baseAnchor:
-                  pos >= 0 ? { percentBase: { id: savedIngs[pos].id } } : null,
+                baseAnchor: pos >= 0 ? { percentBase: { id: savedIngs[pos].id } } : null,
               },
             );
           }
@@ -308,7 +323,8 @@ export class RecipesService {
         const pubs = await this.ingredients.find({ where: { id: In(ingredientIds) } });
         const nameMap = new Map(pubs.map((p) => [p.id, p.name]));
         recipe.ingredients = recipe.ingredients.map((ri) => {
-          const display = ri.customName ?? (ri.ingredientId ? nameMap.get(ri.ingredientId) ?? null : null);
+          const display =
+            ri.customName ?? (ri.ingredientId ? (nameMap.get(ri.ingredientId) ?? null) : null);
           // 把 name 塞到响应里（虽然实体没这个字段，但 JSON.stringify 会带上）
           (ri as RecipeIngredient & { name?: string | null }).name = display;
           return ri;
@@ -484,10 +500,7 @@ export class RecipesService {
     await mgr.save(version);
   }
 
-  private async findOneInTx(
-    mgr: import('typeorm').EntityManager,
-    id: string,
-  ): Promise<Recipe> {
+  private async findOneInTx(mgr: import('typeorm').EntityManager, id: string): Promise<Recipe> {
     const recipe = await mgr.findOne(Recipe, {
       where: { id },
       relations: ['ingredients', 'steps'],

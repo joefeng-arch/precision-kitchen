@@ -28,7 +28,7 @@ function assertProductionSecrets(): void {
     if (jwtSecret === placeholder) {
       throw new Error(
         '🚨 生产环境拒绝启动：JWT_SECRET 仍为开发占位值。请运行：\n' +
-          '   node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"\n' +
+          "   node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"\n" +
           '并将结果写入 .env.production 的 JWT_SECRET。',
       );
     }

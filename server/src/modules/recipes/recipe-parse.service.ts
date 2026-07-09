@@ -9,10 +9,7 @@ import {
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import type { ScalingProfile, ScalingRole } from '../../common/utils/scaling-engine';
-import {
-  ParsedPercentBase,
-  validateAndRecomputeScaling,
-} from './parse-scaling-validator';
+import { ParsedPercentBase, validateAndRecomputeScaling } from './parse-scaling-validator';
 
 export interface ParsedIngredient {
   name: string;
@@ -145,10 +142,7 @@ export class RecipeParseService {
 
   private get apiKey(): string {
     return (
-      process.env.AI_API_KEY ??
-      process.env.DASHSCOPE_API_KEY ??
-      process.env.ANTHROPIC_API_KEY ??
-      ''
+      process.env.AI_API_KEY ?? process.env.DASHSCOPE_API_KEY ?? process.env.ANTHROPIC_API_KEY ?? ''
     );
   }
 

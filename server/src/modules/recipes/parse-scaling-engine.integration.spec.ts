@@ -3,19 +3,14 @@
  * EngineIngredient[] 后，必须能被真缩放引擎直接消费并得到已知正确的克数。
  * （这正是"AI 解析 → 进入缩放引擎可直接用"的契约测试。）
  */
-import {
-  EngineIngredient,
-  scaleRecipe,
-} from '../../common/utils/scaling-engine';
-import {
-  ScalingClassificationInput,
-  validateAndRecomputeScaling,
-} from './parse-scaling-validator';
+import { EngineIngredient, scaleRecipe } from '../../common/utils/scaling-engine';
+import { ScalingClassificationInput, validateAndRecomputeScaling } from './parse-scaling-validator';
 
 /** 把 validator 输出组装成引擎输入（id = 数组下标，正是保存前草稿的形态） */
-function toEngine(
-  input: ScalingClassificationInput,
-): { ings: EngineIngredient[]; percentBaseId: number | null } {
+function toEngine(input: ScalingClassificationInput): {
+  ings: EngineIngredient[];
+  percentBaseId: number | null;
+} {
   const v = validateAndRecomputeScaling(input);
   expect(v.severity).toBe('ok'); // 集成前提：干净解析
   const ings = input.ingredients.map((raw, idx) => ({
@@ -67,9 +62,7 @@ describe('解析输出 → 真引擎（种子 fixture 已知结果）', () => {
         { name: '水', amount: 300, scalingRole: 'ratio_linked' },
       ],
     });
-    const result = byId(
-      scaleRecipe(ings, { profile: 'ratio_based', lock: { id: 0, value: 30 } }),
-    );
+    const result = byId(scaleRecipe(ings, { profile: 'ratio_based', lock: { id: 0, value: 30 } }));
     expect(result[0]).toBe(30);
     expect(result[1]).toBe(450);
   });

@@ -20,10 +20,7 @@ export class AdminAuthController {
   @ApiBearerAuth()
   @UseGuards(AdminJwtAuthGuard)
   @ApiOperation({ summary: '修改管理员密码（首次登录强制执行）' })
-  changePassword(
-    @CurrentAdmin() admin: AdminJwtPayload,
-    @Body() dto: AdminChangePasswordDto,
-  ) {
+  changePassword(@CurrentAdmin() admin: AdminJwtPayload, @Body() dto: AdminChangePasswordDto) {
     return this.authService.changePassword(admin.sub, dto.currentPassword, dto.newPassword);
   }
 

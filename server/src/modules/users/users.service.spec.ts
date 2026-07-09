@@ -53,20 +53,25 @@ describe('UsersService.upsertByExternalId', () => {
 
   it('老用户：命中 → 只更新 nickname/avatar/unionid，不 create', async () => {
     const existing: Partial<User> = {
-      id: 'u1', provider: 'mock', externalId: 'mock-alice',
-      openid: null, nickname: '旧名', avatar: null, unionid: null,
+      id: 'u1',
+      provider: 'mock',
+      externalId: 'mock-alice',
+      openid: null,
+      nickname: '旧名',
+      avatar: null,
+      unionid: null,
     };
     const repo = makeRepo({ findOne: jest.fn().mockResolvedValue(existing) });
     const svc = new UsersService(repo);
 
     await svc.upsertByExternalId({
-      provider: 'mock', externalId: 'mock-alice', nickname: '新名',
+      provider: 'mock',
+      externalId: 'mock-alice',
+      nickname: '新名',
     });
 
     expect(repo.create).not.toHaveBeenCalled();
-    expect(repo.save).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'u1', nickname: '新名' }),
-    );
+    expect(repo.save).toHaveBeenCalledWith(expect.objectContaining({ id: 'u1', nickname: '新名' }));
   });
 
   it('并发冲突 23505：回查返回已插入用户', async () => {
@@ -80,7 +85,8 @@ describe('UsersService.upsertByExternalId', () => {
     const svc = new UsersService(repo);
 
     const result = await svc.upsertByExternalId({
-      provider: 'mock', externalId: 'mock-bob',
+      provider: 'mock',
+      externalId: 'mock-bob',
     });
 
     expect(result).toBe(inserted);

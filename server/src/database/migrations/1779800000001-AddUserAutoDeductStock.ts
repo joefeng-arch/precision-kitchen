@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddUserAutoDeductStock1779800000001 implements MigrationInterface {
   name = 'AddUserAutoDeductStock1779800000001';
@@ -10,8 +10,6 @@ export class AddUserAutoDeductStock1779800000001 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "users" DROP COLUMN IF EXISTS "autoDeductStock"`,
-    );
+    await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "autoDeductStock"`);
   }
 }

@@ -41,19 +41,13 @@ export class FavoritesController {
   @Post(':recipeId')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: '切换收藏状态' })
-  toggle(
-    @CurrentUser() user: JwtUserPayload,
-    @Param('recipeId', ParseUUIDPipe) recipeId: string,
-  ) {
+  toggle(@CurrentUser() user: JwtUserPayload, @Param('recipeId', ParseUUIDPipe) recipeId: string) {
     return this.service.toggle(user.sub, recipeId);
   }
 
   @Delete(':recipeId')
   @ApiOperation({ summary: '取消收藏' })
-  remove(
-    @CurrentUser() user: JwtUserPayload,
-    @Param('recipeId', ParseUUIDPipe) recipeId: string,
-  ) {
+  remove(@CurrentUser() user: JwtUserPayload, @Param('recipeId', ParseUUIDPipe) recipeId: string) {
     return this.service.remove(user.sub, recipeId);
   }
 

@@ -7,11 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, IsNull, Repository } from 'typeorm';
 import { paginate } from '../../common/dto/pagination.dto';
-import {
-  CreateCategoryDto,
-  ListCategoriesDto,
-  UpdateCategoryDto,
-} from './dto/category.dto';
+import { CreateCategoryDto, ListCategoriesDto, UpdateCategoryDto } from './dto/category.dto';
 import { Category } from './entities/category.entity';
 
 @Injectable()
