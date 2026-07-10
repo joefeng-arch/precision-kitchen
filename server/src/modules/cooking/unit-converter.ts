@@ -106,3 +106,12 @@ export function prettyAmount(n: NormalizedAmount): string {
   }
   return `${Math.round(n.amount * 10) / 10}个`;
 }
+
+/**
+ * 食材名归一化：去全部空白 + 小写。归一化后**全等**才算匹配——
+ * 无子串/前缀/模糊（"糖粉"≠"糖"），错误匹配比不匹配更糟。
+ * stock-deduction（库存扣减）与 cost-calculator（成本估算）共用。
+ */
+export function normName(s: string): string {
+  return s.replace(/\s+/g, '').toLowerCase();
+}

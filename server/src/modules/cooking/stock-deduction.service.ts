@@ -5,7 +5,7 @@ import { DataSource, In, Repository } from 'typeorm';
 import { Ingredient } from '../ingredients/entities/ingredient.entity';
 import { UserIngredient } from '../ingredients/entities/user-ingredient.entity';
 import { ScalingService, ScaledIngredientItem } from '../recipes/scaling.service';
-import { CanonicalUnit, normalizeUnit, prettyAmount } from './unit-converter';
+import { CanonicalUnit, normName, normalizeUnit, prettyAmount } from './unit-converter';
 
 export type MatchStatus =
   | 'ok' // 匹配且库存足够
@@ -372,8 +372,4 @@ export class StockDeductionService {
       totalEstimatedCost: Math.round(totalCost * 100) / 100,
     };
   }
-}
-
-function normName(s: string): string {
-  return s.replace(/\s+/g, '').toLowerCase();
 }

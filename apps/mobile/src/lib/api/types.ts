@@ -502,7 +502,11 @@ export interface CategoryView {
 
 export type CostSource = 'user_lib' | 'public_lib' | 'unknown';
 
-/** POST /cooking/cost 请求体。scale 缺省 = 按原始用量 */
+/**
+ * POST /cooking/cost 请求体。scale 缺省 = 按原始用量。
+ * 定价优先级：用户库（ingredientId 或归一化名称全等——无模糊，"糖粉"≠"糖"）
+ * → 公共库参考价（仅 CNY 部署）→ unknown。
+ */
 export interface RecipeCostRequest {
   recipeId: string;
   scale?: ScaleRequest; // 形状同 §3 判别体
