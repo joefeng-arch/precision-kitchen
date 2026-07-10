@@ -12,8 +12,8 @@ import { User } from '../../modules/users/entities/user.entity';
 import { seedAdmin } from './admin.seed';
 import { seedCategories } from './categories.seed';
 import { seedIngredients } from './ingredients.seed';
+import { seedOverseasOfficialRecipes } from './overseas-official-recipes.seed';
 import { seedOverseasPantryCategories } from './overseas-pantry-categories.seed';
-import { seedRecipes } from './recipes.seed';
 import { seedScalingProfileRecipes } from './scaling-profile-recipes.seed';
 
 async function main() {
@@ -46,8 +46,15 @@ async function main() {
     await seedOverseasPantryCategories(ds);
     await seedIngredients(ds);
     await seedAdmin(ds);
-    await seedRecipes(ds);
-    await seedScalingProfileRecipes(ds);
+    await seedOverseasOfficialRecipes(ds);
+    // 中文 [测试] profile fixture：默认不种（生产 seed 英文-only），本地联调需要时开
+    const seedCnFixtures =
+      process.env.SEED_CN_FIXTURES === 'true' || process.env.SEED_CN_FIXTURES === '1';
+    if (seedCnFixtures) {
+      await seedScalingProfileRecipes(ds);
+    } else {
+      console.log('[seed:scaling-profile-recipes] skipped (set SEED_CN_FIXTURES=true to seed CN test fixtures)');
+    }
     console.log('[seed] done');
   } catch (err) {
     console.error('[seed] failed', err);

@@ -65,6 +65,34 @@ export interface ParseTextResult {
 const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 60 * 1000;
 
+/** CJK 检测：语言感知兜底词（适量/to taste、食材N/Ingredient N、主料/Main）用 */
+const isCJK = (s: string): boolean => /[一-鿿]/.test(s);
+
+/**
+ * amount=0 时会被替换为模糊量词的"具体计量单位"白名单；
+ * 不在名单里的（to taste / a pinch / 少许 / 适量…）视为 AI 给的模糊表述，原样保留
+ */
+const CONCRETE_UNITS = new Set([
+  'g',
+  'kg',
+  'mg',
+  'ml',
+  'l',
+  '个',
+  '颗',
+  '只',
+  '片',
+  '块',
+  '根',
+  '瓣',
+  'oz',
+  'lb',
+  'tsp',
+  'tbsp',
+  'cup',
+  'cups',
+]);
+
 const SYSTEM_PROMPT = `你是一个专业的厨师助手，擅长从非结构化的菜谱文本中提取结构化信息，并判断配方的缩放模式。
 输入可能是中文、英文或中英混合；title、食材 name 保留原文语言，枚举字段一律使用下方规定值。
 
@@ -103,8 +131,10 @@ const SYSTEM_PROMPT = `你是一个专业的厨师助手，擅长从非结构化
 
 基础规则：
 1. difficulty 只能是 "easy"、"medium"、"hard" 之一，默认 "medium"
-2. 对于"适量"、"少许"等模糊用量：amount 填 0，unit 填 "适量"
-3. groupName 根据食材角色分组：主料、调料、腌料、配料
+2. 模糊用量（"适量""少许"，英文 "to taste""a pinch"）：amount 填 0，unit 用输入语言的原表述
+   （中文填 "适量"，英文填 "to taste" 或原文短语）
+3. groupName 根据食材角色分组，语言跟随输入：中文用 主料、调料、腌料、配料；
+   英文用 Main、Seasoning、Marinade、Garnish（或配方自然分组如 Dough、Syrup）
 4. scaleType：调味料/调料用 "sub_linear"，固定用量（如泡打粉）用 "fixed"，其余用 "linear"
 5. steps 中有明确计时（如"炒3分钟"→180，"煮10分钟"→600）时填 durationSeconds，否则填 null
 6. totalMinutes 为整个菜谱的估计烹饪总时间（分钟），没有时可不填
@@ -114,10 +144,13 @@ const SYSTEM_PROMPT = `你是一个专业的厨师助手，擅长从非结构化
 
 缩放模式（scalingProfile）判定规则：
 8. 按配方类型选择，拿不准时一律用 "linear_legacy"（宁可保守，不要乱标）：
-   - "bakers_percentage"：烘焙面团类（面包/吐司/披萨/贝果/bread/dough/sourdough 等以面粉为主体）
-   - "ratio_based"：两种核心原料按固定比例（手冲咖啡/pour-over、茶水比，常见 "1:15" 式表述），
+   - "bakers_percentage"：烘焙面团类，以面粉为主体（面包/吐司/披萨/贝果；英文关键词：
+     bread/dough/sourdough/bread flour/starter/levain/biga/poolish/hydration %/loaf/bake）
+   - "ratio_based"：两种核心原料按固定比例（手冲咖啡、茶水比；英文关键词：pour over/
+     pour-over/brew ratio/coffee-to-water/french press/cold brew，常见 "1:15" 式表述），
      且配方中所有原料都参与该比例时才可用
-   - "multi_ratio"：多组分比例饮品/调酒（奶茶/鸡尾酒），存在一组或多组"份数比"，
+   - "multi_ratio"：多组分比例饮品/调酒（奶茶/鸡尾酒；英文关键词：parts/oz/dash/jigger/
+     cocktail/build/stir/shake/strain），存在一组或多组"份数比"，
      可能另有按某液体量百分比投放的原料（糖/奶）
    - "linear_legacy"：普通家常菜或无明显比例结构
 9. scalingRole 按 profile 填写（linear_legacy 时全部填 null）：
@@ -149,7 +182,20 @@ const SYSTEM_PROMPT = `你是一个专业的厨师助手，擅长从非结构化
 示例3 输入：茶叶100g，热水400g冲泡，糖为热水量的10%（40g），珍珠适量 …
 输出：scalingProfile="multi_ratio"，percentBase={"ingredientIndex":1}，
   茶叶/热水 scalingRole="ratio_linked"、ratioGroup="tea_base"；
-  糖 scalingRole="percentage"；珍珠 amount=0、unit="适量"、scalingRole="fixed"`;
+  糖 scalingRole="percentage"；珍珠 amount=0、unit="适量"、scalingRole="fixed"
+示例4 输入（英文）：Bread flour 500g, water 340g, salt 10g, instant yeast 7g …
+  (a sandwich loaf; the bake step says "Do not open the oven during the first 20 minutes")
+输出：scalingProfile="bakers_percentage"，percentBase=null，
+  Bread flour scalingRole="anchor"；water/salt/yeast scalingRole="percentage"；
+  烘烤步骤 warning="Do not open the oven during the first 20 minutes"，其余 warning=null
+示例5 输入（英文）：V60 pour over. Coffee 20g, water 300g, 1:15 brew ratio …
+输出：scalingProfile="ratio_based"，percentBase=null，
+  Coffee scalingRole="anchor"，Water scalingRole="ratio_linked"（有克数，ratioHint 不填）
+示例6 输入（英文）：Negroni. 1 oz gin, 1 oz Campari, 1 oz sweet vermouth,
+  orange peel to garnish. Stir with ice, strain …
+输出：scalingProfile="multi_ratio"，percentBase=null，
+  gin/Campari/vermouth scalingRole="ratio_linked"、ratioGroup="mix"；
+  orange peel amount=0、unit="to taste"、scalingRole="fixed"、groupName="Garnish"`;
 
 @Injectable()
 export class RecipeParseService {
@@ -283,18 +329,29 @@ export class RecipeParseService {
 
     const rawIngs = r.ingredients as any[];
     const coerced = rawIngs.map((i, idx) => {
+      // 语言感知（海外英文输入）：原料名含 CJK 或原文含 CJK → 中文兜底词，否则英文
+      const rawName = i.name != null ? String(i.name).trim() : '';
+      const zh = isCJK(rawName) || isCJK(originalText);
       let amount = Number(i.amount);
-      let unit = String(i.unit ?? 'g').trim();
+      let unit = String(i.unit ?? '').trim();
       if (isNaN(amount) || amount < 0) amount = 0;
-      if (amount === 0 && unit !== '适量') unit = '适量';
+      if (amount === 0) {
+        // 仅当 unit 为空或是具体计量单位时替换为语言对应模糊词；
+        // AI 给的 "to taste"/"a pinch"/"少许"/"适量" 原样保留
+        if (!unit || CONCRETE_UNITS.has(unit.toLowerCase())) {
+          unit = zh ? '适量' : 'to taste';
+        }
+      } else if (!unit) {
+        unit = 'g';
+      }
       const scaleType = ['linear', 'sub_linear', 'fixed'].includes(i.scaleType)
         ? i.scaleType
         : 'linear';
       return {
-        name: String(i.name ?? `食材${idx + 1}`).trim(),
+        name: rawName || (zh ? `食材${idx + 1}` : `Ingredient ${idx + 1}`),
         amount,
         unit,
-        groupName: String(i.groupName ?? '主料').trim(),
+        groupName: String(i.groupName ?? (zh ? '主料' : 'Main')).trim(),
         scaleType,
       };
     });

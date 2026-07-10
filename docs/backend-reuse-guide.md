@@ -37,7 +37,7 @@ ls src/migrations/ 2>$null
 | AI 智能导入 | 复用 + 扩展 | provider 抽象化（见 §五） |
 | 收藏系统 | 直接复用 | 无 |
 | i18n 框架 | 直接复用 | 增加目标语言资源 |
-| 管理后台（admin_users 独立体系） | 直接复用 | 无 |
+| 管理后台（admin_users 独立体系） | 直接复用 | 已扩展（海外内容就绪片）：`POST/PATCH /admin/recipes*` 支持 scalingProfile/baseAnchor/五缩放字段/step.warning，官方缩放配方可灌入。**行为变化**：编辑缩放配方时裸发 ingredients（无缩放字段）由静默抹除改为 400（逃生口：显式 `scalingProfile:"linear_legacy"` 降级）。parse-text 的 warnings 已改英文（海外确认页用户可见；admin 同源同收）。 |
 
 ---
 
