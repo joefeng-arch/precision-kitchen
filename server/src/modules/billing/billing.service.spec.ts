@@ -17,9 +17,9 @@ function makeService(opts?: {
 }) {
   const usersService: any = {
     setTier: jest.fn().mockResolvedValue({}),
-    findById: jest.fn().mockResolvedValue(
-      opts?.user ?? { id: 'u1', role: 'user', vipExpiresAt: null },
-    ),
+    findById: jest
+      .fn()
+      .mockResolvedValue(opts?.user ?? { id: 'u1', role: 'user', vipExpiresAt: null }),
   };
   const recipes: any = { count: jest.fn().mockResolvedValue(opts?.recipeCount ?? 0) };
   const store = new Map<string, number>();
@@ -116,7 +116,9 @@ describe('BillingService.handleRevenueCatEvent', () => {
 
   it('未知事件类型 → resolve 且不 setTier', async () => {
     const { svc, usersService } = makeService();
-    await expect(svc.handleRevenueCatEvent(grantEvent({ type: 'WEIRD_FUTURE_TYPE' }))).resolves.toBeDefined();
+    await expect(
+      svc.handleRevenueCatEvent(grantEvent({ type: 'WEIRD_FUTURE_TYPE' })),
+    ).resolves.toBeDefined();
     expect(usersService.setTier).not.toHaveBeenCalled();
   });
 

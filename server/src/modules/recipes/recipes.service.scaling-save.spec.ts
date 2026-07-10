@@ -342,7 +342,7 @@ describe('RecipesService.create — FREE 配方数上限', () => {
   function makeServiceWithCount(count: number) {
     const made = makeService();
     (made.svc as any).recipes = { count: jest.fn().mockResolvedValue(count) };
-    return { ...made, countFn: ((made.svc as any).recipes.count as jest.Mock) };
+    return { ...made, countFn: (made.svc as any).recipes.count as jest.Mock };
   }
 
   it('默认层（user）已有 10 个 → 403 且事务未执行', async () => {

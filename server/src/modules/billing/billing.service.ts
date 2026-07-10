@@ -102,7 +102,9 @@ export class BillingService {
         const ms = event.expiration_at_ms;
         const expiry = typeof ms === 'number' && Number.isFinite(ms) ? new Date(ms) : null;
         await this.usersService.setTier(appUserId, 'vip', expiry);
-        this.logger.log(`RevenueCat ${type}: ${appUserId} → vip（expiry=${expiry?.toISOString() ?? 'lifetime'}）`);
+        this.logger.log(
+          `RevenueCat ${type}: ${appUserId} → vip（expiry=${expiry?.toISOString() ?? 'lifetime'}）`,
+        );
         return { handled: true };
       }
       if (type === 'EXPIRATION' && targetsPro) {

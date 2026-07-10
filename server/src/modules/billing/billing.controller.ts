@@ -1,9 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import {
-  CurrentUser,
-  JwtUserPayload,
-} from '../../common/decorators/current-user.decorator';
+import { CurrentUser, JwtUserPayload } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { BillingService } from './billing.service';
 import { RevenueCatWebhookGuard } from './revenuecat-webhook.guard';
