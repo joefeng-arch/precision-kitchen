@@ -272,4 +272,46 @@ Body：`{ text: string }`（20–5000 字）。
   步骤 warning 由 AI **保守提取**：仅"违反即直接导致失败"的操作提醒（别开烤箱门/别开盖类），
   普通技巧不算，拿不准为 null；服务端 trim + 截断 256。
 
-失败场景：文本不完整（缺标题/食材/步骤）→ 400；AI 服务不可用 → 400；超限流 → 429。
+失败场景：文本不完整（缺标题/食材/步骤）→ 400；AI 服务不可用 → 400；
+**分钟限流（5 次/分钟）→ 429（稍候重试）；月度配额用尽 → 403（引导升级 PRO，见 §9）**。
+
+---
+
+## 9. 订阅（Billing，FREE/PRO）
+
+层级存储：`users.role`（'user'=FREE / 'vip'=PRO）+ `vipExpiresAt`。**有效角色**在 JWT 校验时折算
+（vip 已过期 → 按 user 处理，不写库；`vipExpiresAt=null` 的 vip = 永久 PRO，Lifetime 授予形态）。
+
+**限额**（`common/constants/tier-limits.ts`）：
+
+| | FREE | PRO |
+|---|---|---|
+| 配方总数（按作者，含草稿） | 10 | 无限 |
+| AI 解析（UTC 日历月） | 5 次/月 | 30 次/月（合理使用） |
+
+**错误语义（客户端按 status code 分支）**：`403` = 配额/上限用尽 → 展示升级 PRO CTA；
+`429` = 分钟级防滥用限流 → 提示稍候。POST /recipes 与 POST /recipes/parse-text 均适用。
+
+### `GET /billing/status`（需 JWT）
+**Response（`data`）**：
+```jsonc
+{
+  "tier": "user" | "vip",
+  "vipExpiresAt": "ISO | null",       // null + vip = 永久
+  "quotas": {
+    "recipes": { "used": 3, "limit": 10 },      // PRO 时 limit 为 null（无限）
+    "aiParse": { "used": 2, "limit": 5, "month": "2026-07" }
+  }
+}
+```
+
+### `POST /billing/mock-upgrade` / `POST /billing/mock-downgrade`（需 JWT，dev 专用）
+受 `ALLOW_MOCK_LOGIN` 控制（生产禁用 → 403）。upgrade = PRO 30 天；downgrade = 回 FREE。
+本地不依赖真实购买即可测 PRO 权益。Response = 新的 billing status。
+
+### `POST /billing/revenuecat/webhook`（server-to-server，客户端勿调）
+鉴权：`Authorization` 头全等 `REVENUECAT_WEBHOOK_SECRET`（未配置 fail-closed 401）。
+授予事件（INITIAL_PURCHASE/RENEWAL/UNCANCELLATION/PRODUCT_CHANGE/NON_RENEWING_PURCHASE，
+entitlement 含 'pro'）→ role=vip + 过期时间（无 expiration_at_ms = 永久，Lifetime 天然支持）；
+EXPIRATION → 回 FREE；CANCELLATION/BILLING_ISSUE → no-op（到期前保留）。恒 200（RC 对非 2xx 重试数天）。
+已知缺口：无事件审计表/去重（setTier 幂等，接受）。

@@ -12,6 +12,7 @@ import { RecipeIngredient } from '../recipes/entities/recipe-ingredient.entity';
 import { RecipeStep } from '../recipes/entities/recipe-step.entity';
 import { Recipe } from '../recipes/entities/recipe.entity';
 import { User } from '../users/entities/user.entity';
+import { UsersModule } from '../users/users.module';
 import { AdminUser } from './entities/admin-user.entity';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminAuthService } from './admin-auth.service';
@@ -34,6 +35,7 @@ import { RecipeParseService } from '../recipes/recipe-parse.service';
       Ingredient,
       Category,
     ]),
+    UsersModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

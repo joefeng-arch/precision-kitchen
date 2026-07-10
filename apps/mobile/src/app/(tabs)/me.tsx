@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 
 import { Button, Screen, Typography } from '@/components/ui';
+import { BillingSection } from '@/features/billing/BillingSection';
 import { useAuthStore } from '@/lib/store/authStore';
 
 export default function MeScreen() {
@@ -11,9 +12,7 @@ export default function MeScreen() {
     <Screen>
       <View className="flex-1 gap-4 p-6">
         <Typography variant="headlineMd">{user?.nickname ?? 'Dev User'}</Typography>
-        <Typography variant="bodyMd" className="text-on-surface-variant">
-          Role: {user?.role ?? 'user'}
-        </Typography>
+        <BillingSection />
         <Button label="Log out" variant="secondary" onPress={() => logout()} />
       </View>
     </Screen>

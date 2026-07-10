@@ -256,3 +256,75 @@ describe('RecipeParseService — 步骤 warning 提取', () => {
     expect(res.recipe.steps[0].warning).toHaveLength(256);
   });
 });
+
+describe('RecipeParseService — 月度配额（FREE 5 / PRO 30）', () => {
+  const { parseQuotaKey } = jest.requireActual('../../common/constants/tier-limits');
+  const OK_CANNED = {
+    title: '面包',
+    description: 'x',
+    totalMinutes: 60,
+    ingredients: [{ name: '面粉', amount: 500, unit: 'g' }],
+    steps: STEPS,
+  };
+
+  it('FREE 已用满 5 次 → 403（ForbiddenException，非 429）并带升级提示', async () => {
+    const { svc, store } = makeService(OK_CANNED);
+    store.set(parseQuotaKey('u1'), 5);
+    await expect(svc.parseText('u1', 'x'.repeat(30))).rejects.toMatchObject({
+      status: 403,
+    });
+    await expect(svc.parseText('u1', 'x'.repeat(30), { tier: 'user' })).rejects.toThrow(/PRO/);
+  });
+
+  it('FREE 第 5 次成功且月度键计到 5', async () => {
+    const { svc, store } = makeService(OK_CANNED);
+    store.set(parseQuotaKey('u1'), 4);
+    await svc.parseText('u1', 'x'.repeat(30), { tier: 'user' });
+    expect(store.get(parseQuotaKey('u1'))).toBe(5);
+  });
+
+  it('VIP：29 次后放行，满 30 → 403 合理使用文案', async () => {
+    const { svc, store } = makeService(OK_CANNED);
+    store.set(parseQuotaKey('u1'), 29);
+    await expect(svc.parseText('u1', 'x'.repeat(30), { tier: 'vip' })).resolves.toMatchObject({
+      parsed: true,
+    });
+    expect(store.get(parseQuotaKey('u1'))).toBe(30);
+    await expect(svc.parseText('u1', 'x'.repeat(30), { tier: 'vip' })).rejects.toMatchObject({
+      status: 403,
+    });
+  });
+
+  it('tier 缺省 → 按 user 限额（fail-closed）', async () => {
+    const { svc, store } = makeService(OK_CANNED);
+    store.set(parseQuotaKey('u1'), 5);
+    await expect(svc.parseText('u1', 'x'.repeat(30))).rejects.toMatchObject({ status: 403 });
+  });
+
+  it('skipRateLimit（admin）→ 月度配额既不检查也不计数', async () => {
+    const { svc, store } = makeService(OK_CANNED);
+    store.set(parseQuotaKey('admin'), 999);
+    await expect(
+      svc.parseText('admin', 'x'.repeat(30), { skipRateLimit: true }),
+    ).resolves.toMatchObject({ parsed: true });
+    expect(store.get(parseQuotaKey('admin'))).toBe(999);
+  });
+
+  it('先计数后调 AI：AI 失败也消耗 1 次（防并发竞态烧钱）', async () => {
+    const { store, cache } = fakeCache();
+    const throwing = new ThrowingRecipeParseService(cache);
+    await expect(throwing.parseText('u1', 'x'.repeat(30), { tier: 'user' })).rejects.toThrow(
+      'AI 解析服务暂时不可用，请稍后再试',
+    );
+    // AI 调用失败，但月度配额已在调用前 +1
+    expect(store.get(parseQuotaKey('u1'))).toBe(1);
+  });
+
+  it('分钟限流优先级不回归：分钟计数满 5 → 仍 429', async () => {
+    const { svc, store } = makeService(OK_CANNED);
+    store.set('recipe_parse_rate:u1', 5);
+    await expect(svc.parseText('u1', 'x'.repeat(30), { tier: 'vip' })).rejects.toMatchObject({
+      status: 429,
+    });
+  });
+});

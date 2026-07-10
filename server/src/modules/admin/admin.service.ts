@@ -11,6 +11,7 @@ import { RecipeIngredient } from '../recipes/entities/recipe-ingredient.entity';
 import { RecipeStep } from '../recipes/entities/recipe-step.entity';
 import { Recipe, RecipeStatus } from '../recipes/entities/recipe.entity';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
+import { UsersService } from '../users/users.service';
 import {
   AdminCreateCategoryDto,
   AdminCreateIngredientDto,
@@ -39,6 +40,7 @@ export class AdminService {
     @InjectRepository(Ingredient) private readonly ingredients: Repository<Ingredient>,
     @InjectRepository(Category) private readonly categories: Repository<Category>,
     private readonly dataSource: DataSource,
+    private readonly usersService: UsersService,
   ) {}
 
   /* ═══════════════════════ Stats ═══════════════════════ */
@@ -502,18 +504,10 @@ export class AdminService {
   }
 
   async setVip(id: string, vipExpiresAt: Date | null) {
-    const user = await this.users.findOne({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
-
-    if (vipExpiresAt) {
-      user.role = 'vip';
-      user.vipExpiresAt = vipExpiresAt;
-    } else {
-      user.role = 'user';
-      user.vipExpiresAt = null;
-    }
-
-    return this.users.save(user);
+    // admin 语义：给了时间 = 授予 VIP，null = 移除。委托订阅层级原语
+    // （原语额外允许 vip+null=永久 PRO，供 RevenueCat Lifetime/webhook 使用）。
+    // NotFound 语义由 setTier 内的 findByIdOrFail 保留。
+    return this.usersService.setTier(id, vipExpiresAt ? 'vip' : 'user', vipExpiresAt);
   }
 
   async deleteUser(id: string) {

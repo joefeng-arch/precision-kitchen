@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Inject,
@@ -8,6 +9,12 @@ import {
 } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import {
+  PARSE_MONTHLY_LIMIT,
+  PARSE_QUOTA_TTL_MS,
+  parseQuotaKey,
+} from '../../common/constants/tier-limits';
+import type { UserRole } from '../users/entities/user.entity';
 import type { ScalingProfile, ScalingRole } from '../../common/utils/scaling-engine';
 import { ParsedPercentBase, validateAndRecomputeScaling } from './parse-scaling-validator';
 
@@ -172,10 +179,12 @@ export class RecipeParseService {
   async parseText(
     userId: string,
     text: string,
-    options?: { skipRateLimit?: boolean },
+    options?: { skipRateLimit?: boolean; tier?: UserRole },
   ): Promise<ParseTextResult> {
     if (!options?.skipRateLimit) {
       await this.checkRateLimit(userId);
+      // 月度层级配额（FREE 5 / PRO 30，PRD §5.3 成本红线）；缺省按 user fail-closed
+      await this.checkMonthlyQuota(userId, options?.tier ?? 'user');
     }
 
     if (!this.apiKey) {
@@ -203,6 +212,24 @@ export class RecipeParseService {
       );
     }
     await this.cache.set(key, count + 1, RATE_WINDOW_MS);
+  }
+
+  /**
+   * 月度层级配额。403（非 429——429 留给分钟限流，客户端按 code 分支 paywall/稍候）。
+   * 先计数再调 AI：与分钟限流一致，防并发竞态烧钱；AI 失败也消耗 1 次。
+   */
+  private async checkMonthlyQuota(userId: string, tier: UserRole): Promise<void> {
+    const key = parseQuotaKey(userId);
+    const limit = PARSE_MONTHLY_LIMIT[tier];
+    const count = (await this.cache.get<number>(key)) ?? 0;
+    if (count >= limit) {
+      throw new ForbiddenException(
+        tier === 'vip'
+          ? `本月 AI 解析已达合理使用上限（${limit} 次/月），下月自动恢复`
+          : `本月 AI 解析次数已用完（免费版 ${limit} 次/月），升级 PRO 可享每月 ${PARSE_MONTHLY_LIMIT.vip} 次`,
+      );
+    }
+    await this.cache.set(key, count + 1, PARSE_QUOTA_TTL_MS);
   }
 
   /** 网络调用隔离点：测试里子类覆写返回 canned JSON */

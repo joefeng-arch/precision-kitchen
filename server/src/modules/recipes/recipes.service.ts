@@ -6,8 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, ILike, In, Repository } from 'typeorm';
+import { FREE_RECIPE_LIMIT } from '../../common/constants/tier-limits';
 import { paginate } from '../../common/dto/pagination.dto';
 import type { ScalingProfile } from '../../common/utils/scaling-engine';
+import type { UserRole } from '../users/entities/user.entity';
 import { collectScalingErrors } from './parse-scaling-validator';
 import { Category } from '../categories/entities/category.entity';
 import { Ingredient } from '../ingredients/entities/ingredient.entity';
@@ -111,7 +113,21 @@ export class RecipesService {
     return this.enrichRecipe(recipe, { withIngredientNames: true });
   }
 
-  async create(authorId: string, dto: CreateRecipeDto): Promise<RecipeWithExtras> {
+  async create(
+    authorId: string,
+    dto: CreateRecipeDto,
+    tier: UserRole = 'user', // 缺省朝上限 fail-closed；仅用户 controller 调本方法
+  ): Promise<RecipeWithExtras> {
+    // FREE 配方数上限（PRD §5.2）；vip 无限
+    if (tier !== 'vip') {
+      const count = await this.recipes.count({ where: { authorId } });
+      if (count >= FREE_RECIPE_LIMIT) {
+        throw new ForbiddenException(
+          `免费版最多保存 ${FREE_RECIPE_LIMIT} 个配方，升级 PRO 解锁无限配方`,
+        );
+      }
+    }
+
     const profile: ScalingProfile = dto.scalingProfile ?? 'linear_legacy';
     this.assertScalingConsistent(profile, dto.ingredients, dto.baseAnchor);
 
