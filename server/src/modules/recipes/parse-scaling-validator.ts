@@ -113,7 +113,9 @@ export function validateAndRecomputeScaling(
     };
   }
   if (!PROFILES.includes(profile as ScalingProfile)) {
-    return fallback(n, [`缩放：未知的缩放模式 "${String(profile)}"，已按普通线性配方处理`]);
+    return fallback(n, [
+      `Scaling: unknown scaling profile "${String(profile)}" — treated as a plain linear recipe`,
+    ]);
   }
 
   switch (profile as ScalingProfile) {
@@ -140,18 +142,20 @@ function validateBakers(input: ScalingClassificationInput): ValidatedScalingResu
   const roles = ings.map((i) => roleOf(i.scalingRole));
   const anchorIdxs = roles.flatMap((r, idx) => (r === 'anchor' ? [idx] : []));
   if (anchorIdxs.length === 0) {
-    return fallback(ings.length, ['缩放：未能识别烘焙基准原料（anchor），已按普通线性配方处理']);
+    return fallback(ings.length, [
+      'Scaling: could not identify the base (anchor) ingredient — treated as a plain linear recipe',
+    ]);
   }
   if (anchorIdxs.length > 1) {
     return fallback(ings.length, [
-      '缩放：识别到多个基准原料（anchor 必须唯一），已按普通线性配方处理',
+      'Scaling: multiple anchor ingredients found (exactly one is required) — treated as a plain linear recipe',
     ]);
   }
   const anchorIdx = anchorIdxs[0];
   const anchorAmount = ings[anchorIdx].amount;
   if (!(anchorAmount > 0)) {
     return fallback(ings.length, [
-      `缩放：基准原料「${ings[anchorIdx].name}」缺少用量，无法计算百分比，已按普通线性配方处理`,
+      `Scaling: anchor ingredient "${ings[anchorIdx].name}" has no amount, percentages cannot be computed — treated as a plain linear recipe`,
     ]);
   }
 
@@ -172,7 +176,7 @@ function validateBakers(input: ScalingClassificationInput): ValidatedScalingResu
     if (role !== 'percentage' && role !== 'fixed') {
       role = ing.amount > 0 ? 'percentage' : 'fixed';
       warnings.push(
-        `缩放：原料「${ing.name}」角色不明确，已按${role === 'percentage' ? '百分比联动' : '固定用量'}处理`,
+        `Scaling: ingredient "${ing.name}" has an ambiguous role — treated as ${role === 'percentage' ? 'percentage-linked' : 'a fixed amount'}`,
       );
       adjusted = true;
     }
@@ -190,7 +194,9 @@ function validateBakers(input: ScalingClassificationInput): ValidatedScalingResu
       const hint = positiveOrNull(ing.percentHint);
       if (hint != null) {
         pct = roundToDp(hint, 3);
-        warnings.push(`缩放：原料「${ing.name}」无用量，采用文本中的百分比 ${pct}%`);
+        warnings.push(
+          `Scaling: ingredient "${ing.name}" has no amount — using the percentage from the text (${pct}%)`,
+        );
         adjusted = true;
       } else {
         out[i] = {
@@ -199,14 +205,16 @@ function validateBakers(input: ScalingClassificationInput): ValidatedScalingResu
           ratioGroup: null,
           ratioValue: null,
         };
-        warnings.push(`缩放：原料「${ing.name}」无用量也无百分比信息，已按固定用量处理`);
+        warnings.push(
+          `Scaling: ingredient "${ing.name}" has no amount and no percentage info — treated as a fixed amount`,
+        );
         adjusted = true;
         continue;
       }
     }
     if (pct == null || pct <= 0 || pct > MAX_PERCENTAGE) {
       return fallback(ings.length, [
-        `缩放：原料「${ing.name}」相对基准的百分比超出合理范围，分类可能有误，已按普通线性配方处理`,
+        `Scaling: ingredient "${ing.name}" has a percentage outside the reasonable range, the classification may be wrong — treated as a plain linear recipe`,
       ]);
     }
     out[i] = {
@@ -238,13 +246,13 @@ function validateRatio(input: ScalingClassificationInput): ValidatedScalingResul
   const roles = ings.map((i) => roleOf(i.scalingRole));
   if (roles.some((r) => r !== 'anchor' && r !== 'ratio_linked')) {
     return fallback(ings.length, [
-      '缩放：比例配方中存在不参与比例的原料（引擎要求全员参比），已按普通线性配方处理',
+      'Scaling: a ratio recipe contains ingredients outside the ratio (the engine requires all ingredients to participate) — treated as a plain linear recipe',
     ]);
   }
   const anchorIdxs = roles.flatMap((r, idx) => (r === 'anchor' ? [idx] : []));
   if (anchorIdxs.length !== 1) {
     return fallback(ings.length, [
-      '缩放：比例配方需要恰好一个基准端（anchor），已按普通线性配方处理',
+      'Scaling: a ratio recipe needs exactly one base (anchor) side — treated as a plain linear recipe',
     ]);
   }
   const anchorIdx = anchorIdxs[0];
@@ -259,18 +267,18 @@ function validateRatio(input: ScalingClassificationInput): ValidatedScalingResul
     const hints = ings.map((i) => positiveOrNull(i.ratioHint));
     if (hints.some((h) => h == null)) {
       return fallback(ings.length, [
-        '缩放：比例配方成员缺少用量且无比例提示，无法计算比例，已按普通线性配方处理',
+        'Scaling: ratio members lack amounts and ratio hints, the ratio cannot be computed — treated as a plain linear recipe',
       ]);
     }
     const anchorHint = hints[anchorIdx] as number;
     ratios = (hints as number[]).map((h) => roundToDp(h / anchorHint, 3));
-    warnings.push('缩放：部分原料无用量，比例取自文本中的比例表述');
+    warnings.push('Scaling: some ingredients have no amount — ratio taken from the text');
     adjusted = true;
   }
 
   if (ratios.some((r) => !(r > 0) || r > MAX_RATIO)) {
     return fallback(ings.length, [
-      '缩放：计算出的比例超出合理范围，分类可能有误，已按普通线性配方处理',
+      'Scaling: the computed ratio is outside the reasonable range, the classification may be wrong — treated as a plain linear recipe',
     ]);
   }
 
@@ -307,7 +315,9 @@ function validateMultiRatio(input: ScalingClassificationInput): ValidatedScaling
 
     if (role === 'anchor' || role === null) {
       role = 'fixed';
-      warnings.push(`缩放：原料「${ing.name}」不参与比例联动，已按固定用量处理`);
+      warnings.push(
+        `Scaling: ingredient "${ing.name}" does not participate in any ratio group — treated as a fixed amount`,
+      );
       adjusted = true;
     }
 
@@ -315,7 +325,7 @@ function validateMultiRatio(input: ScalingClassificationInput): ValidatedScaling
       const group = groupOf(ing.ratioGroup);
       if (!group) {
         return fallback(ings.length, [
-          `缩放：比例原料「${ing.name}」缺少分组名（ratioGroup），已按普通线性配方处理`,
+          `Scaling: ratio ingredient "${ing.name}" is missing its group name (ratioGroup) — treated as a plain linear recipe`,
         ]);
       }
       out[i] = {
@@ -341,7 +351,9 @@ function validateMultiRatio(input: ScalingClassificationInput): ValidatedScaling
   }
 
   if (groupMembers.size === 0) {
-    return fallback(ings.length, ['缩放：多组分配方未识别出任何比例组成员，已按普通线性配方处理']);
+    return fallback(ings.length, [
+      'Scaling: no ratio-group members identified in a multi-ratio recipe — treated as a plain linear recipe',
+    ]);
   }
 
   // 逐组重算 parts（组内最小成员 = 1）
@@ -356,14 +368,16 @@ function validateMultiRatio(input: ScalingClassificationInput): ValidatedScaling
       const hints = idxs.map((i) => positiveOrNull(ings[i].ratioHint));
       if (hints.some((h) => h == null)) {
         return fallback(ings.length, [
-          `缩放：比例组「${group}」成员缺少用量且无比例提示，已按普通线性配方处理`,
+          `Scaling: ratio group "${group}" has members without amounts or ratio hints — treated as a plain linear recipe`,
         ]);
       }
       const minHint = Math.min(...(hints as number[]));
       idxs.forEach((ingIdx, k) => {
         out[ingIdx].ratioValue = roundToDp((hints[k] as number) / minHint, 3);
       });
-      warnings.push(`缩放：比例组「${group}」部分原料无用量，比例取自文本中的比例表述`);
+      warnings.push(
+        `Scaling: ratio group "${group}" has members without amounts — ratio taken from the text`,
+      );
       adjusted = true;
     }
     if (
@@ -372,7 +386,7 @@ function validateMultiRatio(input: ScalingClassificationInput): ValidatedScaling
       )
     ) {
       return fallback(ings.length, [
-        `缩放：比例组「${group}」计算出的比例超出合理范围，已按普通线性配方处理`,
+        `Scaling: ratio group "${group}" computed a ratio outside the reasonable range — treated as a plain linear recipe`,
       ]);
     }
   }
@@ -396,7 +410,9 @@ function validateMultiRatio(input: ScalingClassificationInput): ValidatedScaling
         const hint = positiveOrNull(ing.percentHint);
         if (hint != null) {
           pct = roundToDp(hint, 3);
-          warnings.push(`缩放：原料「${ing.name}」无用量，采用文本中的百分比 ${pct}%`);
+          warnings.push(
+            `Scaling: ingredient "${ing.name}" has no amount — using the percentage from the text (${pct}%)`,
+          );
           adjusted = true;
         } else {
           out[i] = {
@@ -405,14 +421,16 @@ function validateMultiRatio(input: ScalingClassificationInput): ValidatedScaling
             ratioGroup: null,
             ratioValue: null,
           };
-          warnings.push(`缩放：原料「${ing.name}」无用量也无百分比信息，已按固定用量处理`);
+          warnings.push(
+            `Scaling: ingredient "${ing.name}" has no amount and no percentage info — treated as a fixed amount`,
+          );
           adjusted = true;
           continue;
         }
       }
       if (pct == null || pct <= 0 || pct > MAX_PERCENTAGE) {
         return fallback(ings.length, [
-          `缩放：原料「${ing.name}」相对基准的百分比超出合理范围，已按普通线性配方处理`,
+          `Scaling: ingredient "${ing.name}" has a percentage outside the reasonable range — treated as a plain linear recipe`,
         ]);
       }
       out[i].percentageValue = pct;
@@ -437,18 +455,22 @@ function resolvePercentBase(
   out: ValidatedIngredientScaling[],
 ): { percentBase: ParsedPercentBase; baseAmount: number } | { error: string } {
   const pb = raw as { ingredientIndex?: unknown; group?: unknown } | null | undefined;
-  const NO_BASE = '缩放：存在按百分比投放的原料但缺少基准指向（percentBase），已按普通线性配方处理';
+  const NO_BASE =
+    'Scaling: percentage-dosed ingredients exist but no base reference (percentBase) was given — treated as a plain linear recipe';
 
   if (pb == null || typeof pb !== 'object') return { error: NO_BASE };
 
   if (pb.ingredientIndex != null) {
     const idx = Number(pb.ingredientIndex);
     if (!Number.isInteger(idx) || idx < 0 || idx >= ings.length) {
-      return { error: '缩放：百分比基准指向的原料下标无效，已按普通线性配方处理' };
+      return {
+        error:
+          'Scaling: the percentage base points at an invalid ingredient index — treated as a plain linear recipe',
+      };
     }
     if (out[idx].scalingRole !== 'ratio_linked' || !(ings[idx].amount > 0)) {
       return {
-        error: `缩放：百分比基准必须指向有用量的比例组成员（当前指向「${ings[idx].name}」），已按普通线性配方处理`,
+        error: `Scaling: the percentage base must point at a ratio-group member with an amount (currently "${ings[idx].name}") — treated as a plain linear recipe`,
       };
     }
     return { percentBase: { ingredientIndex: idx }, baseAmount: ings[idx].amount };
@@ -460,11 +482,13 @@ function resolvePercentBase(
       o.scalingRole === 'ratio_linked' && o.ratioGroup === group ? [i] : [],
     );
     if (memberIdxs.length === 0) {
-      return { error: `缩放：百分比基准指向的比例组「${group}」不存在，已按普通线性配方处理` };
+      return {
+        error: `Scaling: the percentage base points at a ratio group "${group}" that does not exist — treated as a plain linear recipe`,
+      };
     }
     if (memberIdxs.some((i) => !(ings[i].amount > 0))) {
       return {
-        error: `缩放：百分比基准组「${group}」的成员缺少用量，无法计算基准，已按普通线性配方处理`,
+        error: `Scaling: members of the percentage base group "${group}" lack amounts, the base cannot be computed — treated as a plain linear recipe`,
       };
     }
     const baseAmount = memberIdxs.reduce((s, i) => s + ings[i].amount, 0);

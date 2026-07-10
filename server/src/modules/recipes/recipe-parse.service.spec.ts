@@ -328,3 +328,122 @@ describe('RecipeParseService — 月度配额（FREE 5 / PRO 30）', () => {
     });
   });
 });
+
+// ─── 英文输入（海外主流程）：语言感知兜底 + 三 profile 分类 ─────────────
+
+describe('RecipeParseService — English input', () => {
+  const EN_TEXT = 'Mix bread flour and water, knead, proof, bake at 450F until golden brown.';
+
+  it('英文 bakers canned → 分类 + 服务端重算（68/2/1.4），warnings 空', async () => {
+    const { svc } = makeService({
+      title: 'Basic White Loaf',
+      description: 'Classic sandwich bread',
+      totalMinutes: 180,
+      baseServings: 1,
+      difficulty: 'medium',
+      scalingProfile: 'bakers_percentage',
+      percentBase: null,
+      ingredients: [
+        { name: 'Bread flour', amount: 500, unit: 'g', scalingRole: 'anchor' },
+        { name: 'Water', amount: 340, unit: 'g', scalingRole: 'percentage' },
+        { name: 'Salt', amount: 10, unit: 'g', scalingRole: 'percentage' },
+        { name: 'Instant yeast', amount: 7, unit: 'g', scalingRole: 'percentage' },
+      ],
+      steps: [{ stepNumber: 1, description: 'Mix, knead, proof and bake until done.' }],
+    });
+    const res = await svc.parseText('u1', EN_TEXT);
+    expect(res.recipe.scalingProfile).toBe('bakers_percentage');
+    expect(res.recipe.ingredients.map((i) => i.percentageValue)).toEqual([100, 68, 2, 1.4]);
+    expect(res.warnings).toEqual([]);
+  });
+
+  it('英文 ratio canned（V60）→ ratioValue [1, 15]', async () => {
+    const { svc } = makeService({
+      title: 'V60 Pour Over',
+      scalingProfile: 'ratio_based',
+      ingredients: [
+        { name: 'Coffee', amount: 20, unit: 'g', scalingRole: 'anchor' },
+        { name: 'Water', amount: 300, unit: 'g', scalingRole: 'ratio_linked' },
+      ],
+      steps: [{ stepNumber: 1, description: 'Bloom then pour in slow spirals to 300g.' }],
+    });
+    const res = await svc.parseText('u1', 'Pour over, 1:15 coffee to water ratio.');
+    expect(res.recipe.scalingProfile).toBe('ratio_based');
+    expect(res.recipe.ingredients.map((i) => i.ratioValue)).toEqual([1, 15]);
+  });
+
+  it('英文 multi_ratio canned（Negroni）→ parts [1,1,1]，无 percentage 料 baseAnchor null', async () => {
+    const { svc } = makeService({
+      title: 'Negroni',
+      scalingProfile: 'multi_ratio',
+      percentBase: null,
+      ingredients: [
+        { name: 'Gin', amount: 30, unit: 'ml', scalingRole: 'ratio_linked', ratioGroup: 'spirits' },
+        { name: 'Campari', amount: 30, unit: 'ml', scalingRole: 'ratio_linked', ratioGroup: 'spirits' },
+        { name: 'Sweet vermouth', amount: 30, unit: 'ml', scalingRole: 'ratio_linked', ratioGroup: 'spirits' },
+      ],
+      steps: [{ stepNumber: 1, description: 'Stir with ice and strain over a big cube.' }],
+    });
+    const res = await svc.parseText('u1', 'Equal parts gin, campari and sweet vermouth.');
+    expect(res.recipe.scalingProfile).toBe('multi_ratio');
+    expect(res.recipe.ingredients.map((i) => i.ratioValue)).toEqual([1, 1, 1]);
+    expect(res.recipe.baseAnchor).toBeNull();
+  });
+
+  it('"to taste" 原样保留，不被强转成 适量', async () => {
+    const { svc } = makeService({
+      title: 'Simple Salad',
+      ingredients: [
+        { name: 'Lettuce', amount: 200, unit: 'g' },
+        { name: 'Salt', amount: 0, unit: 'to taste' },
+      ],
+      steps: [{ stepNumber: 1, description: 'Toss everything together and season.' }],
+    });
+    const res = await svc.parseText('u1', 'Toss lettuce, season with salt to taste.');
+    expect(res.recipe.ingredients[1].amount).toBe(0);
+    expect(res.recipe.ingredients[1].unit).toBe('to taste');
+  });
+
+  it('英文非法 amount → 0 + 具体单位替换为 "to taste"（镜像中文 适量 行为）', async () => {
+    const { svc } = makeService({
+      title: 'Spicy Pasta',
+      ingredients: [{ name: 'Chili flakes', amount: 'abc', unit: 'g' }],
+      steps: [{ stepNumber: 1, description: 'Boil pasta, toss with oil and chili flakes.' }],
+    });
+    const res = await svc.parseText('u1', 'Boil pasta and season with chili flakes.');
+    expect(res.recipe.ingredients[0].amount).toBe(0);
+    expect(res.recipe.ingredients[0].unit).toBe('to taste');
+  });
+
+  it('英文兜底：缺 name → "Ingredient 1"，缺 groupName → "Main"', async () => {
+    const { svc } = makeService({
+      title: 'Mystery Dish',
+      ingredients: [{ amount: 100, unit: 'g' }],
+      steps: [{ stepNumber: 1, description: 'Cook the mystery ingredient thoroughly.' }],
+    });
+    const res = await svc.parseText('u1', 'Cook something nice, one hundred grams of it.');
+    expect(res.recipe.ingredients[0].name).toBe('Ingredient 1');
+    expect(res.recipe.ingredients[0].groupName).toBe('Main');
+  });
+
+  it('中文回归钉：缺 name → 食材1，缺 groupName → 主料', async () => {
+    const { svc } = makeService({
+      title: '神秘料理',
+      ingredients: [{ amount: 100, unit: 'g' }],
+      steps: STEPS,
+    });
+    const res = await svc.parseText('u1', '把一百克神秘原料煮熟即可。');
+    expect(res.recipe.ingredients[0].name).toBe('食材1');
+    expect(res.recipe.ingredients[0].groupName).toBe('主料');
+  });
+
+  it('混合钉：英文原文中的中文原料名 → CJK 胜出（适量）', async () => {
+    const { svc } = makeService({
+      title: 'Fusion Stir-fry',
+      ingredients: [{ name: '葱', amount: 0, unit: 'g' }],
+      steps: [{ stepNumber: 1, description: 'Stir fry with scallions until fragrant.' }],
+    });
+    const res = await svc.parseText('u1', 'Stir fry with scallions, use 葱 as needed.');
+    expect(res.recipe.ingredients[0].unit).toBe('适量');
+  });
+});

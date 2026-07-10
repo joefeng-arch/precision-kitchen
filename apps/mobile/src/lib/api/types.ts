@@ -321,7 +321,7 @@ export interface ParsedRecipe {
 export interface ParseTextResult {
   parsed: boolean;
   confidence: ParseConfidence;
-  warnings: string[]; // 恒在；干净时 []；服务端中文文案
+  warnings: string[]; // 恒在；干净时 []；服务端英文文案（"Scaling: ..." 前缀）
   originalText: string;
   recipe: ParsedRecipe;
 }

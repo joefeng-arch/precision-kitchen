@@ -9,7 +9,9 @@ import { Ingredient } from '../ingredients/entities/ingredient.entity';
 import { RecipeCategory } from '../recipes/entities/recipe-category.entity';
 import { RecipeIngredient } from '../recipes/entities/recipe-ingredient.entity';
 import { RecipeStep } from '../recipes/entities/recipe-step.entity';
+import type { ScalingProfile } from '../../common/utils/scaling-engine';
 import { Recipe, RecipeStatus } from '../recipes/entities/recipe.entity';
+import { collectScalingErrors } from '../recipes/parse-scaling-validator';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import {
@@ -23,6 +25,7 @@ import {
   AdminUpdateCategoryDto,
   AdminUpdateIngredientDto,
   AdminUpdateRecipeDto,
+  RecipeIngredientItemDto,
   ReorderCategoriesDto,
 } from './dto/admin.dto';
 
@@ -202,6 +205,42 @@ export class AdminService {
     };
   }
 
+  /**
+   * 缩放一致性校验（与用户路径同一 collectScalingErrors）。
+   * 唯一 string→number 桥：admin DTO 的 amount 是字符串（parseFloat NaN 会自然挂锚点检查）。
+   */
+  private assertScalingConsistent(
+    profile: ScalingProfile,
+    ingredients: RecipeIngredientItemDto[],
+    baseAnchor?: { percentBase?: { ingredientIndex?: number; group?: string } },
+  ) {
+    const errors = collectScalingErrors(
+      profile,
+      ingredients.map((i) => ({
+        scalingRole: i.scalingRole ?? null,
+        percentageValue: i.percentageValue ?? null,
+        ratioGroup: i.ratioGroup ?? null,
+        ratioValue: i.ratioValue ?? null,
+        amount: parseFloat(i.amount),
+      })),
+      baseAnchor?.percentBase ?? null,
+    );
+    if (errors.length > 0) {
+      throw new BadRequestException(`缩放配置不一致：${errors.join('；')}`);
+    }
+  }
+
+  /** ingredient DTO → 实体缩放列（linear_legacy 时全部剥 null，镜像用户路径 DB 卫生） */
+  private ingredientScalingColumns(item: RecipeIngredientItemDto, scaling: boolean) {
+    return {
+      scalingRole: scaling ? (item.scalingRole ?? null) : null,
+      percentageValue: scaling && item.percentageValue != null ? item.percentageValue.toFixed(3) : null,
+      ratioGroup: scaling ? (item.ratioGroup ?? null) : null,
+      ratioValue: scaling && item.ratioValue != null ? item.ratioValue.toFixed(3) : null,
+      roundDp: scaling ? (item.roundDp ?? null) : null,
+    };
+  }
+
   async createOfficialRecipe(dto: AdminCreateOfficialRecipeDto) {
     // Find the 老舅官方 virtual user
     const officialUser = await this.users
@@ -215,6 +254,10 @@ export class AdminService {
         '系统用户"老舅官方"不存在，请先在 users 表中创建一个 openid=NULL, nickname="老舅官方" 的用户',
       );
     }
+
+    const profile: ScalingProfile = dto.scalingProfile ?? 'linear_legacy';
+    const scaling = profile !== 'linear_legacy';
+    this.assertScalingConsistent(profile, dto.ingredients ?? [], dto.baseAnchor);
 
     // 在事务内创建菜谱及关联数据，只返回 savedRecipe.id
     const newRecipeId = await this.dataSource.transaction(async (manager) => {
@@ -233,10 +276,12 @@ export class AdminService {
         status: 'published' as RecipeStatus,
         isPublic: true,
         isFeatured: true,
+        scalingProfile: profile,
       });
       const savedRecipe = await manager.save(Recipe, recipe);
 
       // Save ingredients
+      let savedIngs: Array<{ id: number }> = [];
       if (dto.ingredients?.length) {
         const ingredientEntities = dto.ingredients.map((item, idx) =>
           manager.create(RecipeIngredient, {
@@ -250,9 +295,26 @@ export class AdminService {
             groupName: item.groupName ?? null,
             notes: item.notes ?? null,
             sort: item.sort ?? idx,
+            ...this.ingredientScalingColumns(item, scaling),
           }),
         );
-        await manager.save(RecipeIngredient, ingredientEntities);
+        savedIngs = (await manager.save(RecipeIngredient, ingredientEntities)) as Array<{
+          id: number;
+        }>;
+      }
+
+      // baseAnchor：保存前无 DB id，ingredientIndex → 插入后的真实 id（group 形透传）
+      if (scaling && dto.baseAnchor?.percentBase) {
+        const pb = dto.baseAnchor.percentBase;
+        const resolved =
+          pb.ingredientIndex != null
+            ? { id: savedIngs[pb.ingredientIndex].id }
+            : { group: pb.group as string };
+        await manager.update(
+          Recipe,
+          { id: savedRecipe.id },
+          { baseAnchor: { percentBase: resolved } },
+        );
       }
 
       // Save steps
@@ -265,6 +327,7 @@ export class AdminService {
             imageUrl: item.imageUrl ?? null,
             durationSeconds: item.durationSeconds ?? null,
             tips: item.tips ?? null,
+            warning: item.warning ?? null,
           }),
         );
         await manager.save(RecipeStep, stepEntities);
@@ -293,9 +356,34 @@ export class AdminService {
     const recipe = await this.recipes.findOne({ where: { id } });
     if (!recipe) throw new NotFoundException('Recipe not found');
 
+    // 缩放配置与 ingredients 强绑定（镜像用户路径守卫）：重插会换 ingredient id，
+    // 单独提交 baseAnchor / 非 linear profile 必然悬垂；单独 linear_legacy 降级是允许的。
+    if (
+      dto.ingredients === undefined &&
+      (dto.baseAnchor !== undefined ||
+        (dto.scalingProfile !== undefined && dto.scalingProfile !== 'linear_legacy'))
+    ) {
+      throw new BadRequestException(
+        'scalingProfile（非 linear_legacy）/baseAnchor 必须与 ingredients 一并提交',
+      );
+    }
+
+    const effectiveProfile: ScalingProfile =
+      dto.scalingProfile ?? recipe.scalingProfile ?? 'linear_legacy';
+    const scaling = effectiveProfile !== 'linear_legacy';
+    if (dto.ingredients !== undefined) {
+      this.assertScalingConsistent(effectiveProfile, dto.ingredients, dto.baseAnchor);
+    }
+
     return this.dataSource.transaction(async (manager) => {
       // Update scalar fields
-      const { ingredients: dtoIngredients, steps: dtoSteps, categoryIds, ...scalarFields } = dto;
+      const {
+        ingredients: dtoIngredients,
+        steps: dtoSteps,
+        categoryIds,
+        baseAnchor: _baseAnchor,
+        ...scalarFields
+      } = dto;
 
       // Only assign defined fields
       const updateData: Partial<Recipe> = {};
@@ -317,6 +405,9 @@ export class AdminService {
       if (scalarFields.tags !== undefined) updateData.tags = scalarFields.tags ?? [];
       if (scalarFields.isPublic !== undefined) updateData.isPublic = scalarFields.isPublic;
       if (scalarFields.isFeatured !== undefined) updateData.isFeatured = scalarFields.isFeatured;
+      if (scalarFields.scalingProfile !== undefined) {
+        updateData.scalingProfile = scalarFields.scalingProfile;
+      }
 
       if (Object.keys(updateData).length > 0) {
         await manager.update(Recipe, id, updateData);
@@ -325,6 +416,7 @@ export class AdminService {
       // Replace ingredients if provided
       if (dtoIngredients !== undefined) {
         await manager.delete(RecipeIngredient, { recipeId: id });
+        let savedIngs: Array<{ id: number }> = [];
         if (dtoIngredients.length > 0) {
           const ingredientEntities = dtoIngredients.map((item, idx) =>
             manager.create(RecipeIngredient, {
@@ -338,10 +430,27 @@ export class AdminService {
               groupName: item.groupName ?? null,
               notes: item.notes ?? null,
               sort: item.sort ?? idx,
+              ...this.ingredientScalingColumns(item, scaling),
             }),
           );
-          await manager.save(RecipeIngredient, ingredientEntities);
+          savedIngs = (await manager.save(RecipeIngredient, ingredientEntities)) as Array<{
+            id: number;
+          }>;
         }
+
+        // 重插换了 ingredient id：带 baseAnchor 则按 ingredientIndex 重映射，
+        // 不带则置 null（clearWhenAbsent，collectScalingErrors 已保证需要基准时必带）
+        let nextAnchor: Recipe['baseAnchor'] = null;
+        if (scaling && dto.baseAnchor?.percentBase) {
+          const pb = dto.baseAnchor.percentBase;
+          nextAnchor = {
+            percentBase:
+              pb.ingredientIndex != null
+                ? { id: savedIngs[pb.ingredientIndex].id }
+                : { group: pb.group as string },
+          };
+        }
+        await manager.update(Recipe, id, { baseAnchor: nextAnchor });
       }
 
       // Replace steps if provided
@@ -356,6 +465,7 @@ export class AdminService {
               imageUrl: item.imageUrl ?? null,
               durationSeconds: item.durationSeconds ?? null,
               tips: item.tips ?? null,
+              warning: item.warning ?? null,
             }),
           );
           await manager.save(RecipeStep, stepEntities);

@@ -314,7 +314,7 @@ describe('validateAndRecomputeScaling — multi_ratio', () => {
   it('有 percentage 料但无 percentBase → fallback（镜像引擎守卫）', () => {
     const r = validateAndRecomputeScaling({ ...MILK_TEA, percentBase: undefined });
     expect(r.severity).toBe('fallback');
-    expect(r.warnings.some((w) => w.includes('基准'))).toBe(true);
+    expect(r.warnings.some((w) => w.includes('percentBase'))).toBe(true);
   });
 
   it('percentBase 下标越界 → fallback', () => {
@@ -476,5 +476,126 @@ describe('collectScalingErrors — 保存时结构校验', () => {
         { scalingRole: 'ratio_linked', ratioValue: 1, amount: 100 },
       ]),
     ).not.toEqual([]);
+  });
+});
+
+// ─── warnings 英文化（海外用户可见；国内 admin 同源同收）───────────────
+
+describe('warnings are English (overseas user-visible)', () => {
+  const CJK = /[一-鿿]/;
+  const assertEnglish = (warnings: string[]) => {
+    expect(warnings.length).toBeGreaterThan(0);
+    for (const w of warnings) {
+      expect(w).toMatch(/^Scaling: /);
+      expect(w).not.toMatch(CJK);
+    }
+  };
+
+  it('bakers 无锚兜底：精确英文串钉死', () => {
+    const r = validateAndRecomputeScaling({
+      scalingProfile: 'bakers_percentage',
+      ingredients: [ing('Bread flour', 500), ing('Water', 325)],
+    });
+    expect(r.severity).toBe('fallback');
+    expect(r.warnings).toEqual([
+      'Scaling: could not identify the base (anchor) ingredient — treated as a plain linear recipe',
+    ]);
+  });
+
+  it('bakers 歧义角色纠偏：英文 + 含原料名 + severity adjusted', () => {
+    const r = validateAndRecomputeScaling({
+      scalingProfile: 'bakers_percentage',
+      ingredients: [
+        ing('Bread flour', 500, { scalingRole: 'anchor' }),
+        ing('Water', 325, { scalingRole: 'percentage' }),
+        ing('Salt', 10), // 角色缺失 → 纠偏
+      ],
+    });
+    expect(r.severity).toBe('adjusted');
+    assertEnglish(r.warnings);
+    expect(r.warnings[0]).toContain('"Salt"');
+  });
+
+  it('multi_ratio 缺 percentBase → 英文兜底', () => {
+    const r = validateAndRecomputeScaling({
+      scalingProfile: 'multi_ratio',
+      ingredients: [
+        ing('Tea', 10, { scalingRole: 'ratio_linked', ratioGroup: 'tea_base' }),
+        ing('Water', 120, { scalingRole: 'ratio_linked', ratioGroup: 'tea_base' }),
+        ing('Sugar', 10, { scalingRole: 'percentage' }),
+      ],
+    });
+    expect(r.scalingProfile).toBe('linear_legacy');
+    assertEnglish(r.warnings);
+    expect(r.warnings[0]).toContain('percentBase');
+  });
+
+  it('无 CJK 扫盲：各降级路径的 warnings 全英文', () => {
+    const cases = [
+      // 未知 profile
+      { scalingProfile: 'super_scaling', ingredients: [ing('Pork', 300)] },
+      // bakers 多锚
+      {
+        scalingProfile: 'bakers_percentage',
+        ingredients: [
+          ing('Flour A', 300, { scalingRole: 'anchor' }),
+          ing('Flour B', 200, { scalingRole: 'anchor' }),
+        ],
+      },
+      // ratio 混入非参比角色
+      {
+        scalingProfile: 'ratio_based',
+        ingredients: [
+          ing('Coffee', 20, { scalingRole: 'anchor' }),
+          ing('Ice', 50, { scalingRole: 'fixed' }),
+        ],
+      },
+      // multi_ratio ratio_linked 缺组名
+      {
+        scalingProfile: 'multi_ratio',
+        ingredients: [ing('Gin', 30, { scalingRole: 'ratio_linked' })],
+      },
+      // ratio 成员缺量且无 hint
+      {
+        scalingProfile: 'ratio_based',
+        ingredients: [
+          ing('Coffee', 0, { scalingRole: 'anchor' }),
+          ing('Water', 0, { scalingRole: 'ratio_linked' }),
+        ],
+      },
+    ];
+    for (const c of cases) {
+      const r = validateAndRecomputeScaling(c as Parameters<typeof validateAndRecomputeScaling>[0]);
+      assertEnglish(r.warnings);
+    }
+  });
+
+  it('hint 采纳路径（adjusted）也是英文：ratio / 组 / 百分比 hint', () => {
+    const ratioHints = validateAndRecomputeScaling({
+      scalingProfile: 'ratio_based',
+      ingredients: [
+        ing('Coffee', 0, { scalingRole: 'anchor', ratioHint: 1 }),
+        ing('Water', 0, { scalingRole: 'ratio_linked', ratioHint: 15 }),
+      ],
+    });
+    expect(ratioHints.severity).toBe('adjusted');
+    assertEnglish(ratioHints.warnings);
+
+    const pctHint = validateAndRecomputeScaling({
+      scalingProfile: 'bakers_percentage',
+      ingredients: [
+        ing('Flour', 500, { scalingRole: 'anchor' }),
+        ing('Salt', 0, { scalingRole: 'percentage', percentHint: 2 }),
+      ],
+    });
+    expect(pctHint.severity).toBe('adjusted');
+    assertEnglish(pctHint.warnings);
+  });
+
+  it('回归：干净 fixture warnings 仍为空', () => {
+    expect(validateAndRecomputeScaling(BREAD).warnings).toEqual([]);
+    expect(validateAndRecomputeScaling(COFFEE).warnings).toEqual([]);
+    expect(validateAndRecomputeScaling(MILK_TEA).warnings).toEqual([]);
+    expect(validateAndRecomputeScaling(COCKTAIL).warnings).toEqual([]);
   });
 });

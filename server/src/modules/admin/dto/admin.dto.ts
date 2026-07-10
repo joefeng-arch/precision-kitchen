@@ -7,13 +7,17 @@ import {
   IsEnum,
   IsInt,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
+import { BaseAnchorDto } from '../../recipes/dto/recipe.dto';
 import { RecipeStatus } from '../../recipes/entities/recipe.entity';
 import { UserRole, UserStatus } from '../../users/entities/user.entity';
 import { CategoryType } from '../../categories/entities/category.entity';
@@ -25,6 +29,8 @@ const USER_STATUSES = ['active', 'banned'] as const;
 const RECIPE_STATUSES = ['draft', 'published', 'archived'] as const;
 const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 const SCALE_TYPES = ['linear', 'sub_linear', 'fixed'] as const;
+const SCALING_PROFILES = ['linear_legacy', 'bakers_percentage', 'ratio_based', 'multi_ratio'] as const;
+const SCALING_ROLES = ['anchor', 'percentage', 'ratio_linked', 'fixed'] as const;
 const CATEGORY_TYPES = ['recipe', 'ingredient', 'meal_scene'] as const;
 
 /* ───────────────────── Recipe DTOs ───────────────────── */
@@ -122,6 +128,44 @@ export class RecipeIngredientItemDto {
   @Type(() => Number)
   @IsInt()
   sort?: number;
+
+  // --- 缩放引擎字段（官方缩放配方灌入用；linear_legacy 下保存时被剥离）---
+  // 数值型（非本 DTO 其余 decimal 的 string 惯例）：@Type 对 "65" 字符串透明，镜像 RecipeIngredientDto
+
+  @ApiPropertyOptional({ enum: SCALING_ROLES })
+  @IsOptional()
+  @IsEnum(SCALING_ROLES)
+  scalingRole?: 'anchor' | 'percentage' | 'ratio_linked' | 'fixed';
+
+  @ApiPropertyOptional({ description: 'bakers：相对锚点 %；multi_ratio：相对 percentBase %' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
+  @Max(9999.999) // decimal(7,3)
+  percentageValue?: number;
+
+  @ApiPropertyOptional({ description: '比例组名（multi_ratio）' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  ratioGroup?: string;
+
+  @ApiPropertyOptional({ description: '组内 parts（咖啡 1 : 水 15）' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
+  @Max(9999999.999) // decimal(10,3)
+  ratioValue?: number;
+
+  @ApiPropertyOptional({ description: '取整小数位（0/1/2）；缺省走引擎默认' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(2)
+  roundDp?: number;
 }
 
 /* --- Step sub-DTO for recipe creation --- */
@@ -153,6 +197,12 @@ export class RecipeStepItemDto {
   @IsOptional()
   @IsString()
   tips?: string;
+
+  @ApiPropertyOptional({ description: '失败关键提醒（比 tips 高一级）；与 tips 可并存' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  warning?: string;
 }
 
 /* --- Create official recipe --- */
@@ -216,6 +266,17 @@ export class AdminCreateOfficialRecipeDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  @ApiPropertyOptional({ enum: SCALING_PROFILES, default: 'linear_legacy' })
+  @IsOptional()
+  @IsEnum(SCALING_PROFILES)
+  scalingProfile?: 'linear_legacy' | 'bakers_percentage' | 'ratio_based' | 'multi_ratio';
+
+  @ApiPropertyOptional({ type: BaseAnchorDto, description: 'multi_ratio 有 percentage 料时必给' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BaseAnchorDto)
+  baseAnchor?: BaseAnchorDto;
 
   @ApiProperty({ type: [RecipeIngredientItemDto] })
   @IsArray()
@@ -303,6 +364,20 @@ export class AdminUpdateRecipeDto {
   @ApiPropertyOptional()
   @IsOptional()
   isFeatured?: boolean;
+
+  @ApiPropertyOptional({ enum: SCALING_PROFILES })
+  @IsOptional()
+  @IsEnum(SCALING_PROFILES)
+  scalingProfile?: 'linear_legacy' | 'bakers_percentage' | 'ratio_based' | 'multi_ratio';
+
+  @ApiPropertyOptional({
+    type: BaseAnchorDto,
+    description: '与 ingredients 一并提交（ingredientIndex 形）；单独提交 → 400',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BaseAnchorDto)
+  baseAnchor?: BaseAnchorDto;
 
   @ApiPropertyOptional({ type: [RecipeIngredientItemDto] })
   @IsOptional()
