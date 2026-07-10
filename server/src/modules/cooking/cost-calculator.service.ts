@@ -6,6 +6,7 @@ import { convert } from '../../common/utils/unit-converter';
 import { Ingredient } from '../ingredients/entities/ingredient.entity';
 import { UserIngredient } from '../ingredients/entities/user-ingredient.entity';
 import { CostSource } from './entities/cooking-log-cost.entity';
+import { normName } from './unit-converter';
 
 /** calculate() 实际消费的最小结构；ScaledIngredientItem / EngineScaledItem 均结构兼容 */
 export interface CostableItem {
@@ -45,28 +46,57 @@ export class CostCalculatorService {
 
   async calculate(userId: string, scaled: CostableItem[]): Promise<CostBreakdown> {
     const currency = this.config.get<string>('COST_CURRENCY', 'CNY');
-    const ingredientIds = scaled.map((s) => s.ingredientId).filter((v): v is number => v !== null);
+    const lineIds = scaled.map((s) => s.ingredientId).filter((v): v is number => v !== null);
 
-    const [userLib, publicLib] = await Promise.all([
-      ingredientIds.length
-        ? this.userIngs.find({ where: { userId, ingredientId: In(ingredientIds) } })
-        : Promise.resolve([] as UserIngredient[]),
-      ingredientIds.length
-        ? this.publicIngs.find({ where: { id: In(ingredientIds) } })
-        : Promise.resolve([] as Ingredient[]),
-    ]);
+    // 全量 pantry（个人库量级小；id ASC 让下面的先占策略确定性）——
+    // 名称兜底匹配需要看到用户的所有条目，不只 line ids 命中的那些
+    const userLib = await this.userIngs.find({ where: { userId }, order: { id: 'ASC' } });
 
-    const userByIngId = new Map<number, UserIngredient>();
-    for (const u of userLib) {
-      if (u.ingredientId !== null) userByIngId.set(u.ingredientId, u);
-    }
+    // 公共名要同时覆盖：行侧（resolveName / 方向③）+ pantry 侧（方向②：关联条目的公共名做键）
+    const pantryLinkedIds = userLib
+      .map((u) => u.ingredientId)
+      .filter((v): v is number => v !== null);
+    const publicIds = Array.from(new Set([...lineIds, ...pantryLinkedIds]));
+    const publicLib = publicIds.length
+      ? await this.publicIngs.find({ where: { id: In(publicIds) } })
+      : [];
+
     const publicById = new Map<number, Ingredient>(publicLib.map((p) => [p.id, p]));
+
+    // 两级索引，先占不覆盖（id 最小赢）：
+    //   userByIngId — ingredientId 精确匹配（原有语义）
+    //   userByName  — 归一化名称全等兜底（AI 导入的 customName 行靠它吃到用户价；
+    //                 键 = pantry.customName ∪ pantry 关联公共名，与 stock-deduction 同策略）
+    const userByIngId = new Map<number, UserIngredient>();
+    const userByName = new Map<string, UserIngredient>();
+    for (const u of userLib) {
+      if (u.ingredientId !== null && !userByIngId.has(u.ingredientId)) {
+        userByIngId.set(u.ingredientId, u);
+      }
+      const nameKeys: string[] = [];
+      if (u.customName) nameKeys.push(normName(u.customName));
+      if (u.ingredientId !== null) {
+        const pub = publicById.get(u.ingredientId);
+        if (pub) nameKeys.push(normName(pub.name));
+      }
+      for (const key of nameKeys) {
+        if (key && !userByName.has(key)) userByName.set(key, u);
+      }
+    }
 
     let total = 0;
     let unknownCount = 0;
     const lines: CostLine[] = scaled.map((s) => {
       const name = this.resolveName(s, publicById);
-      const userPrice = s.ingredientId !== null ? userByIngId.get(s.ingredientId) : undefined;
+      let userPrice = s.ingredientId !== null ? userByIngId.get(s.ingredientId) : undefined;
+      if (!userPrice) {
+        // 名称兜底：行名 = customName，缺省回退行 ingredientId 的公共名（方向③）。
+        // 注意不能用 resolveName 的 '未知食材' 兜底值当键。
+        const lineName =
+          s.customName ??
+          (s.ingredientId !== null ? publicById.get(s.ingredientId)?.name : undefined);
+        if (lineName) userPrice = userByName.get(normName(lineName));
+      }
 
       if (userPrice) {
         const unitPrice = parseFloat(userPrice.unitPrice);

@@ -381,7 +381,10 @@ item = Ingredient 全字段 + `categoryName`。注意：`referencePrice` 为 CNY
 
 ## 11. 成本核算：`POST /cooking/cost`（需 JWT）
 
-按当前（或缩放后）用量估算配方成本。定价优先级：**用户原料库单价 → 公共库参考价（仅 CNY 部署）→ unknown（0 计入）**。
+按当前（或缩放后）用量估算配方成本。定价优先级：**用户原料库单价（`ingredientId` 精确匹配，
+或**归一化名称全等**兜底——去全部空白+小写后全等，无子串/模糊，"糖粉"≠"糖"；覆盖 AI 导入的
+customName-only 行）→ 公共库参考价（仅 CNY 部署）→ unknown（0 计入）**。
+名称兜底与库存扣减（stock-deduction）同策略；多条同归一名时取 id 最小者（确定性）。
 
 **Request**：
 ```jsonc
