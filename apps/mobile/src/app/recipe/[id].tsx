@@ -6,6 +6,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Chip, DoodleDivider, Screen, Typography } from '@/components/ui';
+import { CostSummary } from '@/features/cost/CostSummary';
 import { StatBlock } from '@/features/recipes/components/StatBlock';
 import { groupIngredients } from '@/features/recipes/groupIngredients';
 import { ApiClientError } from '@/lib/api/errors';
@@ -142,6 +143,10 @@ export default function RecipeDetailScreen() {
                   ))}
                 </View>
               ))}
+            </View>
+
+            <View className="mt-4">
+              <CostSummary recipeId={recipe.id} scale={null} />
             </View>
 
             <DoodleDivider className="my-8" />

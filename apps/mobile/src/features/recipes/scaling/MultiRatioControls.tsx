@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Typography } from '@/components/ui';
+import { CostSummary } from '@/features/cost/CostSummary';
 import { ApiClientError } from '@/lib/api/errors';
 import { useScaleRecipe } from '@/lib/api/hooks/useScaleRecipe';
 import type { RecipeDetail } from '@/lib/api/types';
@@ -98,6 +99,7 @@ export function MultiRatioControls({ recipe }: { recipe: RecipeDetail }) {
         badgeById={badgeById}
         isPending={mutation.isPending}
       />
+      <CostSummary recipeId={recipe.id} scale={mutation.variables?.body ?? null} />
     </View>
   );
 }

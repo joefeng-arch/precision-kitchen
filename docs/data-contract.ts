@@ -262,3 +262,115 @@ export interface WhoAmI {
   openid?: string;
   role: UserRole;
 }
+
+// ─── 6. 原料库（data-contract.md §10）────────────────────────────
+
+export type StorageType = 'room_temp' | 'refrigerated' | 'frozen';
+
+/**
+ * GET /me/ingredients 的 item（enriched）。
+ * ⚠️ unitPrice / stockAmount 是 decimal string（"0.0040"）；
+ *    stockAmount null = 未跟踪库存（≠ 已耗尽）。已耗尽判定：
+ *    stockAmount != null && Number(stockAmount) === 0。
+ */
+export interface UserIngredientView {
+  id: number;
+  userId: string;
+  ingredientId: number | null; // 与 customName 二选一
+  customName: string | null;
+  unitPrice: string; // decimal → string
+  priceUnit: string;
+  stockAmount: string | null; // decimal → string
+  stockUnit: string | null;
+  notes: string | null;
+  expiryDate: string | null; // YYYY-MM-DD
+  storageType: StorageType | null;
+  categoryId: number | null;
+  createdAt: string; // ISO
+  updatedAt: string; // ISO
+  publicName: string | null; // enrich：公共食材名
+  categoryName: string | null; // enrich：分类名
+}
+
+/** POST /me/ingredients 请求体。⚠️ 数值发 number（服务端 @IsNumber 校验，非 GET 返回的 string） */
+export interface CreateUserIngredientRequest {
+  ingredientId?: number; // 与 customName 二选一必填
+  customName?: string; // ≤64
+  unitPrice: number; // ≥0，≤4 位小数
+  priceUnit: string; // ≤16
+  stockAmount?: number; // ≥0，≤2 位小数
+  stockUnit?: string; // ≤16
+  notes?: string; // ≤256
+  expiryDate?: string; // YYYY-MM-DD
+  storageType?: StorageType;
+  categoryId?: number; // 缺省且关联公共食材时继承其分类
+}
+
+/** PATCH /me/ingredients/:id 请求体（全可选；{stockAmount: 0} = 标记已耗尽） */
+export type UpdateUserIngredientRequest = Partial<CreateUserIngredientRequest>;
+
+export interface ListUserIngredientsParams {
+  page?: number;
+  pageSize?: number; // ≤200
+  categoryId?: number;
+}
+
+/** GET /ingredients 的 item（公共食材，添加时的搜索建议） */
+export interface PublicIngredient {
+  id: number;
+  name: string;
+  categoryId: number | null;
+  defaultUnit: string;
+  referencePrice: string | null; // decimal → string；CNY 计价参考（见 §7 货币守卫）
+  referenceUnit: string | null;
+  imageUrl: string | null;
+  defaultScaleType: ScaleType;
+  aliases: string[];
+  calories: string | null; // decimal → string
+  sort: number;
+  createdAt: string;
+  updatedAt: string;
+  categoryName: string | null; // enrich
+}
+
+/** GET /categories?type=ingredient 的 item */
+export interface CategoryView {
+  id: number;
+  type: 'recipe' | 'ingredient' | 'meal_scene';
+  name: string;
+  icon: string | null;
+  sort: number;
+  enabled: boolean;
+  ownerId: string | null; // null = 系统预设
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── 7. 成本核算（data-contract.md §11）──────────────────────────
+
+export type CostSource = 'user_lib' | 'public_lib' | 'unknown';
+
+/** POST /cooking/cost 请求体。scale 缺省 = 按原始用量；有 scale 时形状同 §3 判别体 */
+export interface RecipeCostRequest {
+  recipeId: string;
+  scale?: ScaleRequest;
+}
+
+/** ⚠️ CostBreakdown/CostLine 数值均为 number（服务端已 round），无需 parseFloat */
+export interface CostLine {
+  ingredientId: number | null;
+  name: string;
+  amount: number;
+  unit: string;
+  unitPrice: number | null; // unknown 行为 null
+  priceUnit: string | null;
+  totalCost: number;
+  source: CostSource;
+}
+
+export interface CostBreakdown {
+  currency: string; // 服务端 COST_CURRENCY env 决定（默 'CNY'）
+  totalCost: number;
+  unknownCount: number;
+  lines: CostLine[];
+}

@@ -1,11 +1,5 @@
-import { Screen, Typography } from '@/components/ui';
+import { PantryScreen } from '@/features/pantry/PantryScreen';
 
-export default function PantryScreen() {
-  return (
-    <Screen>
-      <Typography variant="headlineMd" className="p-6">
-        Pantry — coming soon.
-      </Typography>
-    </Screen>
-  );
+export default function PantryRoute() {
+  return <PantryScreen />;
 }

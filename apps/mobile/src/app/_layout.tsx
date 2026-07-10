@@ -63,6 +63,8 @@ export default function TabLayout() {
             <Stack.Screen name="recipe/[id]" />
             <Stack.Screen name="recipe/scale" />
             <Stack.Screen name="recipe/import" />
+            <Stack.Screen name="pantry/new" />
+            <Stack.Screen name="pantry/[id]" />
             <Stack.Screen name="paywall" />
             <Stack.Screen name="brew/[id]/session" />
           </Stack>

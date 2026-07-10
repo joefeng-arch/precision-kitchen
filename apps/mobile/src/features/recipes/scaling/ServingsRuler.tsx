@@ -1,6 +1,8 @@
 import { View } from 'react-native';
 
 import { Typography } from '@/components/ui';
+import { CostSummary } from '@/features/cost/CostSummary';
+import { deriveLinearScale } from '@/features/cost/deriveCostScale';
 import { ApiClientError } from '@/lib/api/errors';
 import { useScaleRecipeByServings } from '@/lib/api/hooks/useScaleRecipeByServings';
 import type { RecipeDetail } from '@/lib/api/types';
@@ -39,6 +41,11 @@ export function ServingsRuler({ recipe }: { recipe: RecipeDetail }) {
         ingredients={recipe.ingredients}
         scaledById={scaledById}
         isPending={mutation.isPending}
+      />
+      {/* legacy 缩放走 GET ?servings=，成本端点吃锁定式判别体——换算等价 multiplier */}
+      <CostSummary
+        recipeId={recipe.id}
+        scale={deriveLinearScale(mutation.variables?.servings, recipe.baseServings)}
       />
     </View>
   );
