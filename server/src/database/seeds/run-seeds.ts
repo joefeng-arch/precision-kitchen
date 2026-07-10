@@ -12,6 +12,7 @@ import { User } from '../../modules/users/entities/user.entity';
 import { seedAdmin } from './admin.seed';
 import { seedCategories } from './categories.seed';
 import { seedIngredients } from './ingredients.seed';
+import { seedOverseasPantryCategories } from './overseas-pantry-categories.seed';
 import { seedRecipes } from './recipes.seed';
 import { seedScalingProfileRecipes } from './scaling-profile-recipes.seed';
 
@@ -42,6 +43,7 @@ async function main() {
 
   try {
     await seedCategories(ds);
+    await seedOverseasPantryCategories(ds);
     await seedIngredients(ds);
     await seedAdmin(ds);
     await seedRecipes(ds);

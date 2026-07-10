@@ -17,8 +17,10 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { IsNumber, IsString, IsUUID, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CookingService } from './cooking.service';
+import { RecipeCostService } from './recipe-cost.service';
 import { StockDeductionService } from './stock-deduction.service';
 import { CreateCookingLogDto, ListCookingLogsDto, PreviewCostDto } from './dto/cooking.dto';
+import { RecipeCostDto } from './dto/recipe-cost.dto';
 
 class DeductionPreviewDto {
   @IsUUID()
@@ -43,7 +45,15 @@ export class CookingController {
   constructor(
     private readonly service: CookingService,
     private readonly deduction: StockDeductionService,
+    private readonly recipeCost: RecipeCostService,
   ) {}
+
+  @Post('cost')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '按当前（或缩放后）用量估算配方成本（锁定式缩放，四 profile 通吃）' })
+  cost(@CurrentUser() user: JwtUserPayload, @Body() dto: RecipeCostDto) {
+    return this.recipeCost.getCost(user.sub, user.role, dto);
+  }
 
   @Post('deduction-preview')
   @HttpCode(HttpStatus.OK)

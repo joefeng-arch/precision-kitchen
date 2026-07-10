@@ -61,3 +61,45 @@ describe('convert', () => {
     expect(convert(1, 'g', 'xyz')).toBeNull();
   });
 });
+
+describe('English units (overseas)', () => {
+  it('classifies English weight and volume units', () => {
+    expect(getCategory('oz')).toBe('weight');
+    expect(getCategory('lb')).toBe('weight');
+    expect(getCategory('cup')).toBe('volume');
+    expect(getCategory('tbsp')).toBe('volume');
+    expect(getCategory('tsp')).toBe('volume');
+  });
+
+  it('converts oz and lb to grams', () => {
+    expect(convert(1, 'oz', 'g')).toBeCloseTo(28.3495, 4);
+    expect(convert(1, 'lb', 'g')).toBeCloseTo(453.592, 3);
+    expect(convert(1, 'lb', 'oz')).toBeCloseTo(16, 6);
+  });
+
+  it('converts cup/tbsp/tsp within volume', () => {
+    expect(convert(1, 'cup', 'ml')).toBe(240);
+    expect(convert(1, 'cup', '杯')).toBe(1); // 与既有中文杯一致
+    expect(convert(1, 'tbsp', 'ml')).toBe(15);
+    expect(convert(1, 'tsp', 'tbsp')).toBeCloseTo(1 / 3, 6);
+    expect(convert(1, 'fl oz', 'ml')).toBeCloseTo(29.5735, 4);
+  });
+
+  it('accepts word forms, plurals, case and whitespace', () => {
+    expect(convert(2, 'Pounds', 'g')).toBeCloseTo(907.184, 3);
+    expect(convert(1, ' TBSP ', 'ml')).toBe(15);
+    expect(convert(3, 'teaspoons', 'ml')).toBe(15);
+    expect(convert(1, 'ounce', 'g')).toBeCloseTo(28.3495, 4);
+    expect(convert(2, 'cups', 'ml')).toBe(480);
+  });
+
+  it('still rejects cross-category conversion', () => {
+    expect(convert(1, 'oz', 'ml')).toBeNull();
+    expect(convert(1, 'cup', 'g')).toBeNull();
+  });
+
+  it('regression: Chinese units unchanged', () => {
+    expect(convert(1, '斤', 'g')).toBe(500);
+    expect(convert(1, '杯', 'ml')).toBe(240);
+  });
+});

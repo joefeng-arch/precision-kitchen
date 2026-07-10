@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Chip, Typography } from '@/components/ui';
+import { CostSummary } from '@/features/cost/CostSummary';
 import { ApiClientError } from '@/lib/api/errors';
 import { useScaleRecipe } from '@/lib/api/hooks/useScaleRecipe';
 import type { RecipeDetail } from '@/lib/api/types';
@@ -77,6 +78,7 @@ export function BakersPercentageControls({ recipe }: { recipe: RecipeDetail }) {
         badgeById={badgeById}
         isPending={mutation.isPending}
       />
+      <CostSummary recipeId={recipe.id} scale={mutation.variables?.body ?? null} />
     </View>
   );
 }

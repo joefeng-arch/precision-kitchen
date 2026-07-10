@@ -315,3 +315,101 @@ Body：`{ text: string }`（20–5000 字）。
 entitlement 含 'pro'）→ role=vip + 过期时间（无 expiration_at_ms = 永久，Lifetime 天然支持）；
 EXPIRATION → 回 FREE；CANCELLATION/BILLING_ISSUE → no-op（到期前保留）。恒 200（RC 对非 2xx 重试数天）。
 已知缺口：无事件审计表/去重（setTier 幂等，接受）。
+
+---
+
+## 10. 原料库（Pantry：我的食材 + 公共建议 + 分类）
+
+### `GET /me/ingredients`（需 JWT）— 我的原料列表
+
+Query：`page`(默1) / `pageSize`(默20,**≤200**) / `categoryId`。按 `updatedAt DESC`。
+
+**Response（`data`）— 分页包裹**，item = UserIngredient 全字段 + enrich：
+```jsonc
+{
+  "items": [{
+    "id": 1, "userId": "uuid",
+    "ingredientId": 5,            // 关联公共食材；与 customName 二选一
+    "customName": null,           // 自定义名（公共库没有时用）
+    "unitPrice": "0.0040",        // ⚠️ decimal → string，canonical 单位单价（4 位小数）
+    "priceUnit": "g",
+    "stockAmount": "500.00",      // ⚠️ decimal → string；null = 未跟踪库存（≠ 已耗尽）
+    "stockUnit": "g",
+    "notes": null,
+    "expiryDate": null,           // "YYYY-MM-DD" | null
+    "storageType": null,          // "room_temp" | "refrigerated" | "frozen" | null
+    "categoryId": 12,
+    "createdAt": "ISO", "updatedAt": "ISO",
+    "publicName": "面粉",          // enrich：公共食材名（ingredientId 为 null 时 null）
+    "categoryName": "Baking Bench" // enrich：分类名（categoryId 为 null 时 null）
+  }],
+  "total": 3, "page": 1, "pageSize": 20, "totalPages": 1
+}
+```
+**已耗尽判定（客户端）**：`stockAmount != null && Number(stockAmount) === 0`。
+
+### `GET /me/ingredients/:id`（需 JWT）— 详情（enriched，同上 item 形状）；非本人/不存在 → 404
+
+### `POST /me/ingredients`（需 JWT）— 添加
+```jsonc
+{
+  "ingredientId": 5,        // 或 customName，二选一必填（都缺 → 400）
+  "customName": "Bread flour",
+  "unitPrice": 0.004,       // number，≥0，最多 4 位小数（发 number，非 string！）
+  "priceUnit": "g",
+  "stockAmount": 500,       // 可选，number，≥0，最多 2 位小数
+  "stockUnit": "g",         // 可选
+  "notes": "...",           // 可选，≤256
+  "expiryDate": "2026-08-01", // 可选
+  "storageType": "room_temp", // 可选
+  "categoryId": 12          // 可选；缺省且关联公共食材时继承其分类
+}
+```
+Response = enriched item。
+
+### `PATCH /me/ingredients/:id`（需 JWT）— 更新（同 POST 字段全可选）；`{"stockAmount": 0}` = 标记已耗尽
+### `DELETE /me/ingredients/:id`（需 JWT）→ `{ id }`
+
+### `GET /ingredients`（公开）— 公共食材库（添加时的搜索建议）
+Query：`page` / `pageSize` / `keyword`（ILike 模糊）/ `categoryId`。
+item = Ingredient 全字段 + `categoryName`。注意：`referencePrice` 为 CNY 计价参考（见 §11 货币守卫）。
+
+### `GET /categories?type=ingredient`（OptionalJwt）— 食材分类（系统 + 本人自建）
+海外预设（seed，type=ingredient）：`Baking Bench` / `Bean Vault` / `Bar Cabinet`（与国内中文预设并存）。
+
+---
+
+## 11. 成本核算：`POST /cooking/cost`（需 JWT）
+
+按当前（或缩放后）用量估算配方成本。定价优先级：**用户原料库单价 → 公共库参考价（仅 CNY 部署）→ unknown（0 计入）**。
+
+**Request**：
+```jsonc
+{ "recipeId": "uuid",
+  "scale": { "profile": "bakers_percentage",       // 可选；形状 = §3 的 ScaleRequest 判别体
+             "bakersLock": { "mode": "total", "value": 1000 } } }
+```
+- 无 `scale` → 按配方原始用量估算。
+- 有 `scale` → 服务端先跑锁定式缩放再算成本（校验规则同 §3：非法 400、配方不存在 404）。
+
+**Response（`data`）— CostBreakdown（⚠️ 数值均为 number，非实体 decimal string）**：
+```jsonc
+{
+  "currency": "USD",          // 由服务端 COST_CURRENCY env 决定（默 CNY）
+  "totalCost": 3.85,          // 2 位小数
+  "unknownCount": 1,          // 无法定价的行数
+  "lines": [{
+    "ingredientId": 5, "name": "Bread flour",
+    "amount": 650, "unit": "g",
+    "unitPrice": 0.004, "priceUnit": "g",   // unknown 行为 null
+    "totalCost": 2.6,
+    "source": "user_lib"      // "user_lib" | "public_lib" | "unknown"
+  }]
+}
+```
+
+**货币守卫**：`COST_CURRENCY != 'CNY'` 时跳过公共库 `referencePrice` 兜底（种子价为 CNY，
+不能冒充其它币种），该行记 `unknown`；用户自录单价视为本币，正常计价。
+
+**门禁**：`COST_PRO_ONLY=true`（env，默 false）时 FREE 用户 → **403** + 升级提示
+（同 §9 错误语义：403 → 展示升级 PRO CTA；勿用 401——客户端 401 强制登出）。

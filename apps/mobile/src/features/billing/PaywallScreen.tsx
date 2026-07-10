@@ -18,6 +18,7 @@ import {
 const PRO_BENEFITS = [
   'Unlimited recipes (free: 10)',
   '30 AI imports / month (free: 5)',
+  'Recipe cost insights, at any scale',
   'More PRO features on the way',
 ] as const;
 
