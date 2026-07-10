@@ -93,3 +93,61 @@ describe('UsersService.upsertByExternalId', () => {
     expect(findOne).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('UsersService.setTier — 订阅层级原语', () => {
+  const baseUser = { id: 'u1', role: 'user', vipExpiresAt: null } as any;
+
+  it("('vip', 未来时间) → role=vip + 过期时间落库", async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue({ ...baseUser }) });
+    const svc = new UsersService(repo);
+    const expiry = new Date('2027-01-01T00:00:00Z');
+
+    await svc.setTier('u1', 'vip', expiry);
+
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'vip', vipExpiresAt: expiry }),
+    );
+  });
+
+  it("('vip', null) → 永久 PRO（Lifetime 授予形态）", async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue({ ...baseUser }) });
+    const svc = new UsersService(repo);
+
+    await svc.setTier('u1', 'vip', null);
+
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'vip', vipExpiresAt: null }),
+    );
+  });
+
+  it("('user', null) → 降级清空", async () => {
+    const repo = makeRepo({
+      findOne: jest.fn().mockResolvedValue({ ...baseUser, role: 'vip', vipExpiresAt: new Date() }),
+    });
+    const svc = new UsersService(repo);
+
+    await svc.setTier('u1', 'user', null);
+
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'user', vipExpiresAt: null }),
+    );
+  });
+
+  it("('user', 传了时间) → vipExpiresAt 强制置 null（降级不留残余）", async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue({ ...baseUser }) });
+    const svc = new UsersService(repo);
+
+    await svc.setTier('u1', 'user', new Date('2027-01-01'));
+
+    expect(repo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ role: 'user', vipExpiresAt: null }),
+    );
+  });
+
+  it('用户不存在 → NotFoundException', async () => {
+    const repo = makeRepo({ findOne: jest.fn().mockResolvedValue(null) });
+    const svc = new UsersService(repo);
+
+    await expect(svc.setTier('missing', 'vip', null)).rejects.toThrow('User not found');
+  });
+});

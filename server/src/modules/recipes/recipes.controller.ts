@@ -71,7 +71,8 @@ export class RecipesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: '智能导入：AI 解析菜谱文本' })
   parseText(@CurrentUser() user: JwtUserPayload, @Body() dto: ParseTextDto) {
-    return this.parseService.parseText(user.sub, dto.text);
+    // user.role 是有效角色（JwtStrategy 已折算 vip 过期）→ 月度配额按层级
+    return this.parseService.parseText(user.sub, dto.text, { tier: user.role });
   }
 
   @Post()
@@ -79,7 +80,7 @@ export class RecipesController {
   @ApiBearerAuth()
   @ApiOperation({ summary: '创建菜谱' })
   create(@CurrentUser() user: JwtUserPayload, @Body() dto: CreateRecipeDto) {
-    return this.service.create(user.sub, dto);
+    return this.service.create(user.sub, dto, user.role);
   }
 
   @Patch(':id')

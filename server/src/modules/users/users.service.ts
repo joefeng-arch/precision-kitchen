@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
+import { User, UserRole } from './entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -70,6 +70,18 @@ export class UsersService {
   }
 
   save(user: User): Promise<User> {
+    return this.repo.save(user);
+  }
+
+  /**
+   * 订阅层级原语：admin setVip / RevenueCat webhook / mock dev 端点共用。
+   * ('vip', date) = 订阅至 date；('vip', null) = 永久 PRO（Lifetime 授予形态）；
+   * ('user', 任意) = 降级并清空过期时间。
+   */
+  async setTier(id: string, tier: UserRole, vipExpiresAt: Date | null): Promise<User> {
+    const user = await this.findByIdOrFail(id);
+    user.role = tier;
+    user.vipExpiresAt = tier === 'vip' ? vipExpiresAt : null;
     return this.repo.save(user);
   }
 

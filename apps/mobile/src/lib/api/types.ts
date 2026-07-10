@@ -374,6 +374,18 @@ export interface CreateRecipeRequest {
   steps: CreateRecipeStep[];
 }
 
+// ─── 5.7 订阅（data-contract §9）────────────────────────────────
+
+/** GET /billing/status 响应（data）。tier 为有效角色（vip 过期已折算） */
+export interface BillingStatus {
+  tier: UserRole;
+  vipExpiresAt: string | null; // ISO；null + vip = 永久 PRO
+  quotas: {
+    recipes: { used: number; limit: number | null }; // limit null = 无限（PRO）
+    aiParse: { used: number; limit: number; month: string };
+  };
+}
+
 // ─── 6. Timers（server/src/modules/timers，未见于 data-contract.md，按源码反推）──
 
 export type TimerStatus = 'running' | 'paused' | 'finished';

@@ -128,6 +128,17 @@ describe('ImportRecipeScreen', () => {
     expect(screen.queryByTestId('parse-error')).toBeNull();
   });
 
+  it('403 月度配额用尽 → 配额提示 + Upgrade to PRO 跳 paywall（区别于 429）', async () => {
+    mockParse.error = apiError(403, '本月 AI 解析次数已用完（免费版 5 次/月），升级 PRO 可享每月 30 次');
+    await render(<ImportRecipeScreen />);
+    expect(screen.getByTestId('quota-callout')).toBeTruthy();
+    expect(screen.queryByTestId('rate-limit-callout')).toBeNull();
+    expect(screen.queryByTestId('parse-error')).toBeNull();
+
+    await fireEvent.press(screen.getByText('Upgrade to PRO'));
+    expect(mockRouterPush).toHaveBeenCalledWith('/paywall');
+  });
+
   it('普通 400 → text-error 展示', async () => {
     mockParse.error = apiError(400, 'AI 服务未配置，请联系管理员设置 AI_API_KEY');
     await render(<ImportRecipeScreen />);

@@ -58,3 +58,20 @@ describe('RecipesController GET :id/scale（不回归）', () => {
     expect(scaling.scale).toHaveBeenCalledWith('r1', 4);
   });
 });
+
+describe('RecipesController — tier 委托（订阅配额）', () => {
+  it('parseText 把 user.role 作为 tier 传给 parseService', async () => {
+    const parse = { parseText: jest.fn().mockResolvedValue({ parsed: true }) } as any;
+    const controller = new RecipesController({} as any, {} as any, parse);
+    await controller.parseText({ sub: 'u1', role: 'vip' } as any, { text: 'x'.repeat(30) } as any);
+    expect(parse.parseText).toHaveBeenCalledWith('u1', 'x'.repeat(30), { tier: 'vip' });
+  });
+
+  it('create 把 user.role 作为第三参传给 service', async () => {
+    const service = { create: jest.fn().mockResolvedValue({ id: 'r1' }) } as any;
+    const controller = new RecipesController(service, {} as any, {} as any);
+    const dto = { title: 't', ingredients: [], steps: [] } as any;
+    await controller.create({ sub: 'u1', role: 'user' } as any, dto);
+    expect(service.create).toHaveBeenCalledWith('u1', dto, 'user');
+  });
+});

@@ -7,6 +7,7 @@ import { redisConfig } from './config/redis.config';
 import { jwtConfig } from './config/jwt.config';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { ContentModule } from './modules/content/content.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { CookingModule } from './modules/cooking/cooking.module';
@@ -84,6 +85,7 @@ import { HealthController } from './health.controller';
       },
     }),
     AuthModule,
+    BillingModule,
     UsersModule,
     ContentModule,
     CategoriesModule,

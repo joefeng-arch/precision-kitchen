@@ -77,6 +77,8 @@ export function ImportRecipeScreen() {
   const trimmedLen = text.trim().length;
   const parseError = parse.error;
   const isRateLimited = parseError instanceof ApiClientError && parseError.code === 429;
+  // 403 = 月度配额用尽（区别于 429 分钟限流）→ 引导升级 PRO
+  const isQuotaExhausted = parseError instanceof ApiClientError && parseError.code === 403;
 
   return (
     <Screen>
@@ -112,7 +114,20 @@ export function ImportRecipeScreen() {
             </Typography>
           </View>
         )}
-        {parseError != null && !isRateLimited && (
+        {parseError != null && isQuotaExhausted && (
+          // 月度配额用尽：平静展示 + 升级入口（403 与 429 是不同语义）
+          <View testID="quota-callout" className="gap-3 rounded-lg bg-surface-container px-4 py-3">
+            <Typography variant="bodyMd" className="text-on-surface-variant">
+              {(parseError as ApiClientError).message}
+            </Typography>
+            <Button
+              variant="cta"
+              label="Upgrade to PRO"
+              onPress={() => router.push('/paywall')}
+            />
+          </View>
+        )}
+        {parseError != null && !isRateLimited && !isQuotaExhausted && (
           <Typography testID="parse-error" variant="bodyMd" className="text-error">
             {parseError instanceof ApiClientError ? parseError.message : String(parseError)}
           </Typography>

@@ -82,7 +82,7 @@ function makeFakeMgr(store: FakeStore) {
 function makeService() {
   const store: FakeStore = { recipe: null, ings: [], steps: [], versions: [], cats: [] };
   const { mgr, seedIngId } = makeFakeMgr(store);
-  const emptyRepo: any = { findOne: async () => null, find: async () => [] };
+  const emptyRepo: any = { findOne: async () => null, find: async () => [], count: async () => 0 };
   const ds: any = { transaction: (fn: (m: any) => Promise<unknown>) => fn(mgr) };
   const svc = new RecipesService(
     emptyRepo, // recipes
@@ -329,5 +329,43 @@ describe('RecipesService — 步骤 warning 落库与往返', () => {
     expect(store.steps).toHaveLength(1);
     expect(store.steps[0].warning).toBe('前 25 分钟别开烤箱门');
     expect(store.steps[0].tips).toBe('上色不够可加烤 2 分钟');
+  });
+});
+
+describe('RecipesService.create — FREE 配方数上限', () => {
+  const BASIC_DTO = {
+    title: '家常菜',
+    ingredients: [{ customName: '肉', amount: 300, unit: 'g' }],
+    steps: [{ stepNumber: 1, description: '做' }],
+  } as any;
+
+  function makeServiceWithCount(count: number) {
+    const made = makeService();
+    (made.svc as any).recipes = { count: jest.fn().mockResolvedValue(count) };
+    return { ...made, countFn: ((made.svc as any).recipes.count as jest.Mock) };
+  }
+
+  it('默认层（user）已有 10 个 → 403 且事务未执行', async () => {
+    const { svc, store } = makeServiceWithCount(10);
+    await expect(svc.create('u1', BASIC_DTO)).rejects.toMatchObject({ status: 403 });
+    expect(store.recipe).toBeNull();
+  });
+
+  it('9 个时第 10 个创建成功', async () => {
+    const { svc, store } = makeServiceWithCount(9);
+    await svc.create('u1', BASIC_DTO);
+    expect(store.recipe).not.toBeNull();
+  });
+
+  it('vip 不受上限约束', async () => {
+    const { svc, store } = makeServiceWithCount(999);
+    await svc.create('u1', BASIC_DTO, 'vip');
+    expect(store.recipe).not.toBeNull();
+  });
+
+  it('count 以 authorId 过滤', async () => {
+    const { svc, countFn } = makeServiceWithCount(0);
+    await svc.create('u1', BASIC_DTO);
+    expect(countFn).toHaveBeenCalledWith({ where: { authorId: 'u1' } });
   });
 });

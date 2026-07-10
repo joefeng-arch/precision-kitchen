@@ -20,6 +20,7 @@ import { useColorScheme } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { LoginScreen } from '@/features/auth/LoginScreen';
 import { queryClient } from '@/lib/api/queryClient';
+import { configurePurchases } from '@/lib/billing/purchases';
 import { useAuthStore } from '@/lib/store/authStore';
 
 SplashScreen.preventAutoHideAsync();
@@ -28,6 +29,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const authStatus = useAuthStore((s) => s.status);
   const bootstrap = useAuthStore((s) => s.bootstrap);
+  const userId = useAuthStore((s) => s.user?.id);
   const [fontsLoaded, fontError] = useFonts({
     PlusJakartaSans_400Regular,
     PlusJakartaSans_500Medium,
@@ -40,6 +42,12 @@ export default function TabLayout() {
   useEffect(() => {
     bootstrap();
   }, [bootstrap]);
+
+  // RevenueCat：登录后以我们的 user.id 作为 appUserID（webhook 反查键）。
+  // 无 SDK key / Expo Go Preview 模式下 wrapper 内部安全 no-op。
+  useEffect(() => {
+    if (userId) configurePurchases(userId);
+  }, [userId]);
 
   if (!fontsLoaded && !fontError) {
     return null;
@@ -55,6 +63,7 @@ export default function TabLayout() {
             <Stack.Screen name="recipe/[id]" />
             <Stack.Screen name="recipe/scale" />
             <Stack.Screen name="recipe/import" />
+            <Stack.Screen name="paywall" />
             <Stack.Screen name="brew/[id]/session" />
           </Stack>
         )}
