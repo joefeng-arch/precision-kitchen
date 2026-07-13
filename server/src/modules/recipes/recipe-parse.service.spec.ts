@@ -187,7 +187,7 @@ describe('RecipeParseService — 缩放字段解析', () => {
     const { cache } = fakeCache();
     const svc = new ThrowingRecipeParseService(cache);
     await expect(svc.parseText('u1', 'x'.repeat(30))).rejects.toThrow(
-      'AI 解析服务暂时不可用，请稍后再试',
+      'The AI service is temporarily unavailable — please try again later',
     );
   });
 
@@ -314,7 +314,7 @@ describe('RecipeParseService — 月度配额（FREE 5 / PRO 30）', () => {
     const { store, cache } = fakeCache();
     const throwing = new ThrowingRecipeParseService(cache);
     await expect(throwing.parseText('u1', 'x'.repeat(30), { tier: 'user' })).rejects.toThrow(
-      'AI 解析服务暂时不可用，请稍后再试',
+      'The AI service is temporarily unavailable — please try again later',
     );
     // AI 调用失败，但月度配额已在调用前 +1
     expect(store.get(parseQuotaKey('u1'))).toBe(1);

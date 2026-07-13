@@ -11,7 +11,7 @@ export default function MeScreen() {
   return (
     <Screen>
       <View className="flex-1 gap-4 p-6">
-        <Typography variant="headlineMd">{user?.nickname ?? 'Dev User'}</Typography>
+        <Typography variant="headlineMd">{user?.nickname ?? 'Chef'}</Typography>
         <BillingSection />
         <Button label="Log out" variant="secondary" onPress={() => logout()} />
       </View>

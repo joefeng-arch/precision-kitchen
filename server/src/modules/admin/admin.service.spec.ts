@@ -60,7 +60,7 @@ function makeFakeMgr(store: FakeStore) {
   return mgr;
 }
 
-const OFFICIAL_USER = { id: 'official-1', nickname: '老舅官方' };
+const OFFICIAL_USER = { id: 'official-1', nickname: 'Precision Kitchen' };
 
 function makeService() {
   const store: FakeStore = { recipe: null, ings: [], steps: [], cats: [] };

@@ -234,7 +234,7 @@ export class RecipeParseService {
     }
 
     if (!this.apiKey) {
-      throw new BadRequestException('AI 服务未配置，请联系管理员设置 AI_API_KEY');
+      throw new BadRequestException('The AI service is not configured — please contact support');
     }
 
     let rawResult: unknown;
@@ -242,7 +242,7 @@ export class RecipeParseService {
       rawResult = await this.callAI(text);
     } catch (e: any) {
       this.logger.error(`AI call failed: ${e.message}`);
-      throw new BadRequestException('AI 解析服务暂时不可用，请稍后再试');
+      throw new BadRequestException('The AI service is temporarily unavailable — please try again later');
     }
 
     return this.validateAndFormat(rawResult, text);
@@ -253,7 +253,7 @@ export class RecipeParseService {
     const count = (await this.cache.get<number>(key)) ?? 0;
     if (count >= RATE_LIMIT) {
       throw new HttpException(
-        '调用过于频繁，每分钟最多 5 次，请稍后再试',
+        'Too many requests — up to 5 parses per minute, please try again shortly',
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
@@ -271,8 +271,8 @@ export class RecipeParseService {
     if (count >= limit) {
       throw new ForbiddenException(
         tier === 'vip'
-          ? `本月 AI 解析已达合理使用上限（${limit} 次/月），下月自动恢复`
-          : `本月 AI 解析次数已用完（免费版 ${limit} 次/月），升级 PRO 可享每月 ${PARSE_MONTHLY_LIMIT.vip} 次`,
+          ? `Monthly AI import limit reached (${limit}/month, fair use) — resets next month`
+          : `Monthly free AI imports used up (${limit}/month) — upgrade to PRO for ${PARSE_MONTHLY_LIMIT.vip}/month`,
       );
     }
     await this.cache.set(key, count + 1, PARSE_QUOTA_TTL_MS);
@@ -314,17 +314,17 @@ export class RecipeParseService {
     const errors: string[] = [];
 
     if (!r?.title || String(r.title).trim() === '') {
-      errors.push('标题不能为空');
+      errors.push('title is missing');
     }
     if (!Array.isArray(r?.ingredients) || r.ingredients.length === 0) {
-      errors.push('至少需要 1 个食材');
+      errors.push('at least 1 ingredient is required');
     }
     if (!Array.isArray(r?.steps) || r.steps.length === 0) {
-      errors.push('至少需要 1 个步骤');
+      errors.push('at least 1 step is required');
     }
 
     if (errors.length > 0) {
-      throw new BadRequestException(`解析结果不完整：${errors.join('；')}`);
+      throw new BadRequestException(`Parsed result is incomplete: ${errors.join('; ')}`);
     }
 
     const rawIngs = r.ingredients as any[];

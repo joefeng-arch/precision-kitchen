@@ -521,18 +521,18 @@ export function collectScalingErrors(
   if (profile === 'bakers_percentage') {
     const anchors = ingredients.filter((i) => role(i) === 'anchor');
     if (anchors.length !== 1) {
-      errors.push('bakers_percentage 必须恰好一个 anchor 原料');
+      errors.push('bakers_percentage requires exactly one anchor ingredient');
     } else if (!(anchors[0].amount > 0)) {
-      errors.push('anchor 原料的用量必须 > 0');
+      errors.push('the anchor ingredient must have an amount > 0');
     }
     for (const i of ingredients) {
       const r = role(i);
       if (r === null) {
-        errors.push('bakers_percentage 下每个原料都需要 scalingRole（anchor/percentage/fixed）');
+        errors.push('every ingredient needs a scalingRole under bakers_percentage (anchor/percentage/fixed)');
       } else if (r === 'ratio_linked') {
-        errors.push('bakers_percentage 不支持 ratio_linked 角色');
+        errors.push('bakers_percentage does not support the ratio_linked role');
       } else if (r === 'percentage' && !(Number(i.percentageValue) > 0)) {
-        errors.push('percentage 原料必须有 > 0 的 percentageValue');
+        errors.push('percentage ingredients need a percentageValue > 0');
       }
     }
   }
@@ -540,14 +540,14 @@ export function collectScalingErrors(
   if (profile === 'ratio_based') {
     const anchors = ingredients.filter((i) => role(i) === 'anchor');
     if (anchors.length !== 1) {
-      errors.push('ratio_based 必须恰好一个 anchor 原料');
+      errors.push('ratio_based requires exactly one anchor ingredient');
     }
     for (const i of ingredients) {
       const r = role(i);
       if (r !== 'anchor' && r !== 'ratio_linked') {
-        errors.push('ratio_based 要求全部原料参与比例（anchor/ratio_linked）');
+        errors.push('ratio_based requires every ingredient to join the ratio (anchor/ratio_linked)');
       } else if (!(Number(i.ratioValue) > 0)) {
-        errors.push('比例成员必须有 > 0 的 ratioValue');
+        errors.push('ratio members need a ratioValue > 0');
       }
     }
   }
@@ -557,31 +557,31 @@ export function collectScalingErrors(
     ingredients.forEach((i, idx) => {
       const r = role(i);
       if (r === 'anchor' || r === null) {
-        errors.push('multi_ratio 下角色只能是 ratio_linked/percentage/fixed');
+        errors.push('roles under multi_ratio must be ratio_linked/percentage/fixed');
         return;
       }
       if (r === 'ratio_linked') {
         linkedIdx.push(idx);
         if (!i.ratioGroup || String(i.ratioGroup).trim() === '') {
-          errors.push('ratio_linked 原料必须有 ratioGroup');
+          errors.push('ratio_linked ingredients need a ratioGroup');
         }
         if (!(Number(i.ratioValue) > 0)) {
-          errors.push('ratio_linked 原料必须有 > 0 的 ratioValue');
+          errors.push('ratio_linked ingredients need a ratioValue > 0');
         }
       }
       if (r === 'percentage' && !(Number(i.percentageValue) > 0)) {
-        errors.push('percentage 原料必须有 > 0 的 percentageValue');
+        errors.push('percentage ingredients need a percentageValue > 0');
       }
     });
     if (linkedIdx.length === 0) {
-      errors.push('multi_ratio 至少需要一个 ratio_linked 原料');
+      errors.push('multi_ratio needs at least one ratio_linked ingredient');
     }
 
     const percentCount = ingredients.filter((i) => role(i) === 'percentage').length;
     if (percentCount > 0) {
       const pb = percentBase;
       if (!pb || (pb.ingredientIndex == null && !pb.group)) {
-        errors.push('存在 percentage 原料时必须提供 baseAnchor.percentBase');
+        errors.push('baseAnchor.percentBase is required when percentage ingredients exist');
       } else if (pb.ingredientIndex != null) {
         const idx = pb.ingredientIndex;
         if (
@@ -590,14 +590,14 @@ export function collectScalingErrors(
           idx >= ingredients.length ||
           role(ingredients[idx]) !== 'ratio_linked'
         ) {
-          errors.push('percentBase.ingredientIndex 必须指向某个 ratio_linked 原料');
+          errors.push('percentBase.ingredientIndex must point at a ratio_linked ingredient');
         }
       } else if (pb.group) {
         const exists = ingredients.some(
           (i) => role(i) === 'ratio_linked' && i.ratioGroup === pb.group,
         );
         if (!exists) {
-          errors.push(`percentBase.group "${pb.group}" 不存在对应的比例组`);
+          errors.push(`percentBase.group "${pb.group}" has no matching ratio group`);
         }
       }
     }

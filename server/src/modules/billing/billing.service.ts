@@ -149,7 +149,7 @@ export class BillingService {
       'true';
     if (!allowMock) {
       // 403 而非 401：客户端 apiFetch 对 401 强制登出
-      throw new ForbiddenException('Mock 计费已禁用（ALLOW_MOCK_LOGIN!=true）');
+      throw new ForbiddenException('Mock billing is disabled (ALLOW_MOCK_LOGIN != true)');
     }
   }
 }

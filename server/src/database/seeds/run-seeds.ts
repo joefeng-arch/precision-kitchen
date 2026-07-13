@@ -42,18 +42,21 @@ async function main() {
   console.log('[seed] db connected');
 
   try {
-    await seedCategories(ds);
     await seedOverseasPantryCategories(ds);
-    await seedIngredients(ds);
     await seedAdmin(ds);
     await seedOverseasOfficialRecipes(ds);
-    // 中文 [测试] profile fixture：默认不种（生产 seed 英文-only），本地联调需要时开
+    // 中文种子数据（31 分类 + 55 公共食材 + [测试] profile fixture）：默认不种——
+    // 生产库英文-only（pantry 分类 picker 只出现海外预设）；本地联调需要时开
     const seedCnFixtures =
       process.env.SEED_CN_FIXTURES === 'true' || process.env.SEED_CN_FIXTURES === '1';
     if (seedCnFixtures) {
+      await seedCategories(ds);
+      await seedIngredients(ds);
       await seedScalingProfileRecipes(ds);
     } else {
-      console.log('[seed:scaling-profile-recipes] skipped (set SEED_CN_FIXTURES=true to seed CN test fixtures)');
+      console.log(
+        '[seed:cn-fixtures] skipped categories/ingredients/scaling-profile-recipes (set SEED_CN_FIXTURES=true to seed CN data)',
+      );
     }
     console.log('[seed] done');
   } catch (err) {

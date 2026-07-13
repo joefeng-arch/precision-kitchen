@@ -27,7 +27,7 @@ export class AppleAuthProvider implements AuthProvider {
   async authenticate(credentials: AuthCredentials): Promise<AuthResult> {
     const audience = this.config.get<string>('APPLE_CLIENT_ID');
     if (!audience) {
-      throw new UnauthorizedException('Apple 登录未配置 Client ID');
+      throw new UnauthorizedException('Apple Sign-In is not configured on the server');
     }
 
     let payload: AppleIdTokenType;
@@ -35,10 +35,10 @@ export class AppleAuthProvider implements AuthProvider {
       payload = await this.verifyToken(credentials.code, audience);
     } catch (err) {
       this.logger.warn(`Apple identityToken 校验失败: ${(err as Error).message}`);
-      throw new UnauthorizedException('Apple identityToken 校验失败');
+      throw new UnauthorizedException('Apple sign-in failed — invalid identity token');
     }
     if (!payload?.sub) {
-      throw new UnauthorizedException('Apple identityToken 缺少 sub');
+      throw new UnauthorizedException('Apple sign-in failed — token is missing a subject');
     }
 
     return {

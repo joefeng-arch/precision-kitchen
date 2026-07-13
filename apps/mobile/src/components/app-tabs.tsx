@@ -14,11 +14,6 @@ export default function AppTabs() {
         <NativeTabs.Trigger.Icon md="home" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="discover">
-        <NativeTabs.Trigger.Label>Discover</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon md="explore" />
-      </NativeTabs.Trigger>
-
       <NativeTabs.Trigger name="brew">
         <NativeTabs.Trigger.Label>Brew</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon md="coffee_maker" />

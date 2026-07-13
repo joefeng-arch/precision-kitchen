@@ -32,7 +32,7 @@ export class MockAuthProvider implements AuthProvider {
       'true';
 
     if (!allowMock) {
-      throw new UnauthorizedException('Mock 登录已禁用（ALLOW_MOCK_LOGIN!=true）');
+      throw new UnauthorizedException('Mock login is disabled (ALLOW_MOCK_LOGIN != true)');
     }
 
     const seed = (credentials.code || 'dev').trim() || 'dev';

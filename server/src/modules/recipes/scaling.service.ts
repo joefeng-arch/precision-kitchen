@@ -95,7 +95,7 @@ export class ScalingService {
    */
   async scale(recipeId: string, targetServings: number): Promise<ScaleResult> {
     if (targetServings <= 0) {
-      throw new BadRequestException('targetServings 必须 > 0');
+      throw new BadRequestException('targetServings must be > 0');
     }
     const recipe = await this.recipes.findOne({
       where: { id: recipeId },
@@ -106,7 +106,7 @@ export class ScalingService {
     const profile = recipe.scalingProfile ?? 'linear_legacy';
     if (profile !== 'linear_legacy') {
       throw new BadRequestException(
-        `profile "${profile}" 需按锚点/锁定量缩放，请用锁定式接口（POST /:id/scale）`,
+        `Profile "${profile}" scales by anchor/locked amounts — use the locked-scale endpoint (POST /:id/scale)`,
       );
     }
 
