@@ -91,7 +91,7 @@ export class CostCalculatorService {
       let userPrice = s.ingredientId !== null ? userByIngId.get(s.ingredientId) : undefined;
       if (!userPrice) {
         // 名称兜底：行名 = customName，缺省回退行 ingredientId 的公共名（方向③）。
-        // 注意不能用 resolveName 的 '未知食材' 兜底值当键。
+        // 注意不能用 resolveName 的 'Unknown ingredient' 兜底值当键。
         const lineName =
           s.customName ??
           (s.ingredientId !== null ? publicById.get(s.ingredientId)?.name : undefined);
@@ -177,7 +177,7 @@ export class CostCalculatorService {
       const pub = publicById.get(s.ingredientId);
       if (pub) return pub.name;
     }
-    return '未知食材';
+    return 'Unknown ingredient';
   }
 }
 

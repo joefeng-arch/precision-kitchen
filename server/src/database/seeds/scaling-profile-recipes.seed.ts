@@ -4,6 +4,7 @@ import { RecipeIngredient } from '../../modules/recipes/entities/recipe-ingredie
 import { RecipeStep } from '../../modules/recipes/entities/recipe-step.entity';
 import { User } from '../../modules/users/entities/user.entity';
 import type { ScalingProfile, ScalingRole } from '../../common/utils/scaling-engine';
+import { OFFICIAL_AUTHOR_NICKNAME } from '../../common/constants/official-author';
 
 /**
  * 三条最小测试配方，一个 profile 一条，用于前端"缩放工作台"（Step 6）的真实联调，
@@ -173,11 +174,11 @@ async function ensureSeedAuthor(ds: DataSource): Promise<string> {
   const user = await userRepo
     .createQueryBuilder('u')
     .where('u.openid IS NULL')
-    .andWhere('u.nickname = :name', { name: '老舅官方' })
+    .andWhere('u.nickname = :name', { name: OFFICIAL_AUTHOR_NICKNAME })
     .getOne();
   if (user) return user.id;
   const created = await userRepo.save(
-    userRepo.create({ openid: null, nickname: '老舅官方', role: 'user' }),
+    userRepo.create({ openid: null, nickname: OFFICIAL_AUTHOR_NICKNAME, role: 'user' }),
   );
   return created.id;
 }

@@ -6,6 +6,7 @@ import { RecipeIngredient } from '../../modules/recipes/entities/recipe-ingredie
 import { RecipeStep } from '../../modules/recipes/entities/recipe-step.entity';
 import { User } from '../../modules/users/entities/user.entity';
 import { collectScalingErrors } from '../../modules/recipes/parse-scaling-validator';
+import { OFFICIAL_AUTHOR_NICKNAME } from '../../common/constants/official-author';
 import type {
   ScalingCorrection,
   ScalingProfile,
@@ -479,11 +480,11 @@ async function ensureSeedAuthor(ds: DataSource): Promise<string> {
   const user = await userRepo
     .createQueryBuilder('u')
     .where('u.openid IS NULL')
-    .andWhere('u.nickname = :name', { name: '老舅官方' })
+    .andWhere('u.nickname = :name', { name: OFFICIAL_AUTHOR_NICKNAME })
     .getOne();
   if (user) return user.id;
   const created = await userRepo.save(
-    userRepo.create({ openid: null, nickname: '老舅官方', role: 'user' }),
+    userRepo.create({ openid: null, nickname: OFFICIAL_AUTHOR_NICKNAME, role: 'user' }),
   );
   return created.id;
 }

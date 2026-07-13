@@ -64,7 +64,7 @@ export class CategoriesService {
     const exists = await this.repo.findOne({
       where: { type: dto.type, name: dto.name, ownerId: userId },
     });
-    if (exists) throw new ConflictException('你已经创建过同名分类');
+    if (exists) throw new ConflictException('You already have a category with this name');
     return this.repo.save(this.repo.create({ ...dto, ownerId: userId }));
   }
 

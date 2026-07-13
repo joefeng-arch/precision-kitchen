@@ -86,7 +86,7 @@ export class UserIngredientsService {
 
   async create(userId: string, dto: CreateUserIngredientDto) {
     if (!dto.ingredientId && !dto.customName) {
-      throw new BadRequestException('ingredientId 或 customName 必填其一');
+      throw new BadRequestException('Either ingredientId or customName is required');
     }
 
     // 自动推断 categoryId：

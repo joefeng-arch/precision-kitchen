@@ -9,6 +9,7 @@ import { Ingredient } from '../ingredients/entities/ingredient.entity';
 import { RecipeCategory } from '../recipes/entities/recipe-category.entity';
 import { RecipeIngredient } from '../recipes/entities/recipe-ingredient.entity';
 import { RecipeStep } from '../recipes/entities/recipe-step.entity';
+import { OFFICIAL_AUTHOR_NICKNAME } from '../../common/constants/official-author';
 import type { ScalingProfile } from '../../common/utils/scaling-engine';
 import { Recipe, RecipeStatus } from '../recipes/entities/recipe.entity';
 import { collectScalingErrors } from '../recipes/parse-scaling-validator';
@@ -246,12 +247,12 @@ export class AdminService {
     const officialUser = await this.users
       .createQueryBuilder('u')
       .where('u.openid IS NULL')
-      .andWhere('u.nickname = :name', { name: '老舅官方' })
+      .andWhere('u.nickname = :name', { name: OFFICIAL_AUTHOR_NICKNAME })
       .getOne();
 
     if (!officialUser) {
       throw new BadRequestException(
-        '系统用户"老舅官方"不存在，请先在 users 表中创建一个 openid=NULL, nickname="老舅官方" 的用户',
+        `系统官方用户不存在，请先运行 seed 或在 users 表创建 openid=NULL, nickname="${OFFICIAL_AUTHOR_NICKNAME}" 的用户`,
       );
     }
 

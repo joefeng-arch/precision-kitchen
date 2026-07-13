@@ -37,7 +37,7 @@ export class GoogleAuthProvider implements AuthProvider {
       this.config.get<string>('GOOGLE_WEB_CLIENT_ID'),
     ].filter((v): v is string => !!v);
     if (audience.length === 0) {
-      throw new UnauthorizedException('Google 登录未配置 Client ID');
+      throw new UnauthorizedException('Google Sign-In is not configured on the server');
     }
 
     let payload: TokenPayload | undefined;
@@ -45,10 +45,10 @@ export class GoogleAuthProvider implements AuthProvider {
       payload = await this.verifyToken(credentials.code, audience);
     } catch (err) {
       this.logger.warn(`Google idToken 校验失败: ${(err as Error).message}`);
-      throw new UnauthorizedException('Google idToken 校验失败');
+      throw new UnauthorizedException('Google sign-in failed — invalid ID token');
     }
     if (!payload?.sub) {
-      throw new UnauthorizedException('Google idToken 缺少 sub');
+      throw new UnauthorizedException('Google sign-in failed — token is missing a subject');
     }
 
     return {

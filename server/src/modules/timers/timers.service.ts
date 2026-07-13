@@ -49,7 +49,7 @@ export class TimersService {
   async create(userId: string, dto: CreateTimerDto): Promise<TimerView> {
     const count = await this.redis.scard(this.setKey(userId));
     if (count >= MAX_ACTIVE_PER_USER) {
-      throw new ConflictException(`最多 ${MAX_ACTIVE_PER_USER} 个计时器同时运行`);
+      throw new ConflictException(`Up to ${MAX_ACTIVE_PER_USER} timers can run at once`);
     }
 
     const state: TimerState = {
@@ -85,7 +85,7 @@ export class TimersService {
   async pause(userId: string, id: string): Promise<TimerView> {
     const state = await this.mustRead(userId, id);
     if (state.status !== 'running') {
-      throw new BadRequestException(`无法暂停：当前状态 ${state.status}`);
+      throw new BadRequestException(`Cannot pause — timer is ${state.status}`);
     }
     state.pausedAt = Date.now();
     state.status = 'paused';
@@ -96,7 +96,7 @@ export class TimersService {
   async resume(userId: string, id: string): Promise<TimerView> {
     const state = await this.mustRead(userId, id);
     if (state.status !== 'paused') {
-      throw new BadRequestException(`无法恢复：当前状态 ${state.status}`);
+      throw new BadRequestException(`Cannot resume — timer is ${state.status}`);
     }
     if (state.pausedAt !== null) {
       state.accumulatedPauseMs += Date.now() - state.pausedAt;

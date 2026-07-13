@@ -123,7 +123,7 @@ export class RecipesService {
       const count = await this.recipes.count({ where: { authorId } });
       if (count >= FREE_RECIPE_LIMIT) {
         throw new ForbiddenException(
-          `免费版最多保存 ${FREE_RECIPE_LIMIT} 个配方，升级 PRO 解锁无限配方`,
+          `Recipe limit reached (${FREE_RECIPE_LIMIT} on the free plan) — upgrade to PRO for unlimited recipes`,
         );
       }
     }
@@ -190,7 +190,7 @@ export class RecipesService {
         (dto.baseAnchor !== undefined ||
           (dto.scalingProfile !== undefined && dto.scalingProfile !== 'linear_legacy'))
       ) {
-        throw new BadRequestException('缩放配置必须与 ingredients 一并提交');
+        throw new BadRequestException('Scaling configuration must be submitted together with ingredients');
       }
 
       // 只 patch 显式给出的列；用 mgr.update 不触发 @OneToMany cascade
@@ -460,7 +460,7 @@ export class RecipesService {
       baseAnchor?.percentBase ?? null,
     );
     if (errors.length > 0) {
-      throw new BadRequestException(`缩放配置不一致：${errors.join('；')}`);
+      throw new BadRequestException(`Inconsistent scaling configuration: ${errors.join('; ')}`);
     }
   }
 
