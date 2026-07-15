@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Chip, Typography } from '@/components/ui';
@@ -8,6 +8,7 @@ import { useScaleRecipe } from '@/lib/api/hooks/useScaleRecipe';
 import type { RecipeDetail } from '@/lib/api/types';
 
 import { buildBakersPercentageRequest } from './buildScaleRequest';
+import { getLastScale, setLastScale } from './lastScale';
 import { RatioRuler } from './RatioRuler';
 import { ScaledIngredientList } from './ScaledIngredientList';
 
@@ -16,7 +17,22 @@ type Mode = 'anchor' | 'total';
 export function BakersPercentageControls({ recipe }: { recipe: RecipeDetail }) {
   const anchor = recipe.ingredients.find((i) => i.scalingRole === 'anchor');
   const mutation = useScaleRecipe();
-  const [mode, setMode] = useState<Mode>('anchor');
+  // 会话内重进：恢复上次锁定模式与数值（mount 时冻结）
+  const [restoredLock] = useState(() => {
+    const body = getLastScale(recipe.id)?.body;
+    return body?.profile === 'bakers_percentage' ? body.bakersLock : undefined;
+  });
+  const [mode, setMode] = useState<Mode>(restoredLock?.mode ?? 'anchor');
+
+  useEffect(() => {
+    if (restoredLock) {
+      mutation.mutate({
+        id: recipe.id,
+        body: buildBakersPercentageRequest(restoredLock.mode, restoredLock.value),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!anchor) {
     return (
@@ -28,10 +44,14 @@ export function BakersPercentageControls({ recipe }: { recipe: RecipeDetail }) {
   }
 
   const totalAmount = recipe.ingredients.reduce((s, i) => s + Number(i.amount), 0);
-  const initialValue = mode === 'anchor' ? Number(anchor.amount) : totalAmount;
+  const defaultValue = mode === 'anchor' ? Number(anchor.amount) : totalAmount;
+  const initialValue =
+    restoredLock && restoredLock.mode === mode ? restoredLock.value : defaultValue;
 
   const fire = (value: number) => {
-    mutation.mutate({ id: recipe.id, body: buildBakersPercentageRequest(mode, value) });
+    const body = buildBakersPercentageRequest(mode, value);
+    setLastScale(recipe.id, { body });
+    mutation.mutate({ id: recipe.id, body });
   };
 
   const scaledById = mutation.data

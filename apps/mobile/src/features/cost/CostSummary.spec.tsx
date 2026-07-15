@@ -22,7 +22,8 @@ jest.mock('@/lib/api/hooks/useRecipeCost', () => ({
 const BREAKDOWN: CostBreakdown = {
   currency: 'USD',
   totalCost: 3.85,
-  unknownCount: 2,
+  unknownCount: 1, // 与 lines 一致：两行中一行 unknown
+
   lines: [
     {
       ingredientId: 5,
@@ -69,7 +70,43 @@ describe('CostSummary', () => {
     await render(<CostSummary recipeId="r1" scale={null} />);
 
     expect(screen.getByText('$3.85')).toBeTruthy();
-    expect(screen.getByText(/2 ingredients unpriced/)).toBeTruthy();
+    expect(screen.getByText(/1 ingredient unpriced/)).toBeTruthy();
+  });
+
+  it('全部 unpriced → 总价位显示 —（非误导性 $0.00）+ 引导文案', async () => {
+    mockCost.data = {
+      currency: 'USD',
+      totalCost: 0,
+      unknownCount: 2,
+      lines: BREAKDOWN.lines.map((l) => ({
+        ...l,
+        unitPrice: null,
+        priceUnit: null,
+        totalCost: 0,
+        source: 'unknown' as const,
+      })),
+    };
+    await render(<CostSummary recipeId="r1" scale={null} />);
+
+    expect(screen.queryByText('$0.00')).toBeNull();
+    expect(screen.getByText('—')).toBeTruthy();
+    expect(screen.getByText(/Add pantry prices to estimate/)).toBeTruthy();
+  });
+
+  it('部分定价（total 恰为 0 但有已定价行）→ 仍显示 $0.00 正常路径', async () => {
+    mockCost.data = {
+      currency: 'USD',
+      totalCost: 0,
+      unknownCount: 1,
+      lines: [
+        { ...BREAKDOWN.lines[0], totalCost: 0, unitPrice: 0, priceUnit: 'g' },
+        BREAKDOWN.lines[1],
+      ],
+    };
+    await render(<CostSummary recipeId="r1" scale={null} />);
+
+    expect(screen.getByText('$0.00')).toBeTruthy();
+    expect(screen.getByText(/1 ingredient unpriced/)).toBeTruthy();
   });
 
   it('展开 → 逐行明细，unknown 行显示 —', async () => {

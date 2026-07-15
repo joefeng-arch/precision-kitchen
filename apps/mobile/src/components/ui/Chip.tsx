@@ -13,6 +13,8 @@ export interface ChipProps {
   shape?: ChipShape;
   textVariant?: TypographyVariant;
   className?: string;
+  /** 限制行数并尾部省略（长标签在窄屏溢出 chip 容器时用——RN 原生不裁剪溢出） */
+  numberOfLines?: number;
 }
 
 const toneContainerClassName: Record<ChipTone, string> = {
@@ -84,12 +86,17 @@ export function Chip({
   shape = 'pill',
   textVariant = 'labelCaps',
   className,
+  numberOfLines,
 }: ChipProps) {
   return (
     <View
       className={`px-2 py-1 ${toneContainerClassName[tone]} ${shapeClassName[shape]} ${className ?? ''}`}
     >
-      <Text style={[textVariantStyle[textVariant], { color: toneTextColor[tone] }]}>
+      <Text
+        style={[textVariantStyle[textVariant], { color: toneTextColor[tone] }]}
+        numberOfLines={numberOfLines}
+        ellipsizeMode={numberOfLines != null ? 'tail' : undefined}
+      >
         {label}
       </Text>
     </View>

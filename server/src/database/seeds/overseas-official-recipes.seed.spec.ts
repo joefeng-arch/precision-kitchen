@@ -82,6 +82,16 @@ describe('validateSeedRecipeDef', () => {
     }
   });
 
+  it('内容门禁：官方配方必须有 coverImage（上架卡片/详情 hero 不允许空块）', () => {
+    for (const def of RECIPES) {
+      expect({ title: def.title, hasCover: !!def.coverImage }).toEqual({
+        title: def.title,
+        hasCover: true,
+      });
+      expect(def.coverImage).toMatch(/^https:\/\/images\.unsplash\.com\//);
+    }
+  });
+
   it('内容抽查：四个 profile 都有代表；奶茶 percentBaseAnchor 指向水成员', () => {
     const profiles = new Set(RECIPES.map((r) => r.scalingProfile));
     expect(profiles.has('bakers_percentage')).toBe(true);

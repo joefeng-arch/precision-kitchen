@@ -61,28 +61,36 @@ export default function RecipeDetailScreen() {
       {recipe && (
         <ScrollView contentContainerStyle={{ paddingTop: insets.top + 56, paddingBottom: 32 }}>
           <View className="px-5">
-            <View
-              className="aspect-[4/5] overflow-hidden rounded-xl bg-surface-container-low"
-              style={shadows.card}
-            >
-              {resolveImageUrl(recipe.coverImage) && (
+            {/* 无图（导入配方常见）不留空 hero 块，chips 行独立展示 */}
+            {resolveImageUrl(recipe.coverImage) ? (
+              <View
+                className="aspect-[4/5] overflow-hidden rounded-xl bg-surface-container-low"
+                style={shadows.card}
+              >
                 <Image
                   source={{ uri: resolveImageUrl(recipe.coverImage) }}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
                 />
-              )}
-              <View
-                style={{ pointerEvents: 'none' }}
-                className="absolute inset-0 rounded-xl border border-outline-variant/30"
-              />
-              <View className="absolute left-4 top-4 flex-row flex-wrap gap-2">
+                <View
+                  style={{ pointerEvents: 'none' }}
+                  className="absolute inset-0 rounded-xl border border-outline-variant/30"
+                />
+                <View className="absolute left-4 top-4 flex-row flex-wrap gap-2">
+                  {recipe.categories[0]?.name && (
+                    <Chip label={recipe.categories[0].name} tone="tertiarySoft" />
+                  )}
+                  <Chip label={titleCase(recipe.difficulty)} tone="tertiarySoft" />
+                </View>
+              </View>
+            ) : (
+              <View className="flex-row flex-wrap gap-2">
                 {recipe.categories[0]?.name && (
                   <Chip label={recipe.categories[0].name} tone="tertiarySoft" />
                 )}
                 <Chip label={titleCase(recipe.difficulty)} tone="tertiarySoft" />
               </View>
-            </View>
+            )}
 
             <View className="mt-4 gap-2">
               <Typography variant="displayLg">{recipe.title}</Typography>

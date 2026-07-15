@@ -76,6 +76,7 @@ export const RECIPES: SeedRecipe[] = [
   // ─── BAKING (bakers_percentage) ────────────────────────────────
   {
     title: 'Basic White Sandwich Loaf',
+    coverImage: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=800&q=80',
     description: 'The everyday loaf: soft crumb, golden crust, forgiving for beginners.',
     scalingProfile: 'bakers_percentage',
     baseServings: 1,
@@ -125,6 +126,7 @@ export const RECIPES: SeedRecipe[] = [
   },
   {
     title: 'Rustic Baguette',
+    coverImage: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&q=80',
     description: 'Lean dough, cold retard, open crumb — the weekend project baguette.',
     scalingProfile: 'bakers_percentage',
     baseServings: 1,
@@ -165,6 +167,7 @@ export const RECIPES: SeedRecipe[] = [
   },
   {
     title: 'Classic Cream Scones',
+    coverImage: 'https://images.unsplash.com/photo-1607958996333-41aef7caefaa?w=800&q=80',
     description: 'Flaky, buttery scones in under an hour — cold butter is the whole game.',
     scalingProfile: 'bakers_percentage',
     baseServings: 1,
@@ -195,6 +198,7 @@ export const RECIPES: SeedRecipe[] = [
   },
   {
     title: 'Fudgy Brownies',
+    coverImage: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=800&q=80',
     description: 'Dense, glossy-topped brownies — pull them early, always.',
     scalingProfile: 'bakers_percentage',
     baseServings: 1,
@@ -234,6 +238,7 @@ export const RECIPES: SeedRecipe[] = [
   // ─── COFFEE (ratio_based) ──────────────────────────────────────
   {
     title: 'V60 Pour Over',
+    coverImage: 'https://images.unsplash.com/photo-1497935586351-b67a49e012bf?w=800&q=80',
     description: 'The 1:15 benchmark cup — clean, bright, repeatable.',
     scalingProfile: 'ratio_based',
     baseServings: 1,
@@ -270,6 +275,7 @@ export const RECIPES: SeedRecipe[] = [
   },
   {
     title: 'French Press',
+    coverImage: 'https://images.unsplash.com/photo-1519082274554-1ca37fb8abb7?w=800&q=80',
     description: 'Full-bodied immersion brew at 1:12 — four minutes, no fuss.',
     scalingProfile: 'ratio_based',
     baseServings: 1,
@@ -301,6 +307,7 @@ export const RECIPES: SeedRecipe[] = [
   },
   {
     title: 'Cold Brew Concentrate',
+    coverImage: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=800&q=80',
     description: 'Overnight 1:8 concentrate — smooth, low-acid, keeps a week.',
     scalingProfile: 'ratio_based',
     baseServings: 1,
@@ -330,6 +337,7 @@ export const RECIPES: SeedRecipe[] = [
   // ─── DRINKS (multi_ratio) ──────────────────────────────────────
   {
     title: 'Negroni',
+    coverImage: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=800&q=80',
     description: 'Equal parts, no debate: gin, Campari, sweet vermouth.',
     scalingProfile: 'multi_ratio',
     baseServings: 1,
@@ -356,6 +364,7 @@ export const RECIPES: SeedRecipe[] = [
   },
   {
     title: 'Margarita (3-2-1)',
+    coverImage: 'https://images.unsplash.com/photo-1556855810-ac404aa91e85?w=800&q=80',
     description: 'Tequila, triple sec, fresh lime — 3:2:1 and nothing else.',
     scalingProfile: 'multi_ratio',
     baseServings: 1,
@@ -382,6 +391,7 @@ export const RECIPES: SeedRecipe[] = [
   },
   {
     title: 'Classic Milk Tea',
+    coverImage: 'https://images.unsplash.com/photo-1558857563-b371033873b8?w=800&q=80',
     description: 'Tea to water 1:12, sugar and milk dosed off the water — scales cleanly.',
     scalingProfile: 'multi_ratio',
     baseServings: 1,
@@ -411,6 +421,7 @@ export const RECIPES: SeedRecipe[] = [
   },
   {
     title: 'Espresso Martini',
+    coverImage: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=800&q=80',
     description: '5:2:3 vodka, coffee liqueur, fresh espresso — plus a fixed touch of syrup.',
     scalingProfile: 'multi_ratio',
     baseServings: 1,
@@ -536,6 +547,11 @@ export async function seedOverseasOfficialRecipes(ds: DataSource): Promise<void>
         if (anchor) {
           await recipeRepo.update(exists.id, { baseAnchor: { percentBase: { id: anchor.id } } });
         }
+      }
+      // 封面 backfill：既有行无图而 def 有 → 补（幂等；已有图不覆盖，尊重后台手动换图）
+      if (def.coverImage && !exists.coverImage) {
+        await recipeRepo.update(exists.id, { coverImage: def.coverImage });
+        console.log(`[seed:overseas-official-recipes] backfilled coverImage for "${def.title}"`);
       }
       continue;
     }

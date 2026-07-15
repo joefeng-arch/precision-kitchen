@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Typography } from '@/components/ui';
@@ -8,6 +8,7 @@ import { useScaleRecipe } from '@/lib/api/hooks/useScaleRecipe';
 import type { RecipeDetail } from '@/lib/api/types';
 
 import { buildMultiRatioRequest, percentBaseLabel, resolvePercentBase } from './buildScaleRequest';
+import { getLastScale, setLastScale } from './lastScale';
 import { RatioRuler } from './RatioRuler';
 import { ScaledIngredientList } from './ScaledIngredientList';
 
@@ -26,9 +27,41 @@ export function MultiRatioControls({ recipe }: { recipe: RecipeDetail }) {
     groups.map((g) => [g, linkedIngredients.find((i) => i.ratioGroup === g)!]),
   );
 
+  // 会话内重进：从上次请求体反解各组 lockedValue（mount 时冻结，fire 更新 lastScale 不回灌滑杆）
+  const [restoredGroups] = useState<Map<string, number> | undefined>(() => {
+    const restoredBody = getLastScale(recipe.id)?.body;
+    if (restoredBody?.profile !== 'multi_ratio') return undefined;
+    return new Map(
+      restoredBody.multiRatio.groups
+        .filter((g) => g.lockedValue != null)
+        .map((g) => [g.group, g.lockedValue as number]),
+    );
+  });
+
   const [groupValues, setGroupValues] = useState<Record<string, number>>(() =>
-    Object.fromEntries(groups.map((g) => [g, Number(firstMemberByGroup.get(g)!.amount)])),
+    Object.fromEntries(
+      groups.map((g) => [
+        g,
+        restoredGroups?.get(g) ?? Number(firstMemberByGroup.get(g)!.amount),
+      ]),
+    ),
   );
+
+  useEffect(() => {
+    if (restoredGroups && restoredGroups.size > 0) {
+      const groupLocks = Object.fromEntries(
+        groups.map((g) => [
+          g,
+          {
+            lockedId: firstMemberByGroup.get(g)!.id,
+            lockedValue: restoredGroups.get(g) ?? Number(firstMemberByGroup.get(g)!.amount),
+          },
+        ]),
+      );
+      mutation.mutate({ id: recipe.id, body: buildMultiRatioRequest(groupLocks, percentBase) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (groups.length === 0) {
     return (
@@ -47,7 +80,9 @@ export function MultiRatioControls({ recipe }: { recipe: RecipeDetail }) {
         { lockedId: firstMemberByGroup.get(g)!.id, lockedValue: nextValues[g] },
       ]),
     );
-    mutation.mutate({ id: recipe.id, body: buildMultiRatioRequest(groupLocks, percentBase) });
+    const body = buildMultiRatioRequest(groupLocks, percentBase);
+    setLastScale(recipe.id, { body });
+    mutation.mutate({ id: recipe.id, body });
   };
 
   const scaledById = mutation.data
@@ -60,7 +95,7 @@ export function MultiRatioControls({ recipe }: { recipe: RecipeDetail }) {
     badgeById.set(member.id, { label: `LOCKED · ${g}`, tone: 'tertiarySoft' });
   }
   for (const p of percentageIngredients) {
-    badgeById.set(p.id, { label: `PCT OF ${percentBaseLabelText}`, tone: 'surfaceContainer' });
+    badgeById.set(p.id, { label: `% OF ${percentBaseLabelText}`, tone: 'surfaceContainer' });
   }
 
   return (
@@ -76,7 +111,7 @@ export function MultiRatioControls({ recipe }: { recipe: RecipeDetail }) {
         return (
           <RatioRuler
             key={g}
-            initialValue={base}
+            initialValue={restoredGroups?.get(g) ?? base}
             min={base * 0.25}
             max={base * 4}
             label={`${g} · ${member.name}`}

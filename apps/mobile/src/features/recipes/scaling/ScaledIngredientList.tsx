@@ -37,28 +37,46 @@ export function ScaledIngredientList({
             const showDimmed = scaled == null || isPending;
             const displayValue = scaled ?? Number(ing.amount);
             return (
+              // 两行制：名称 + 数量一行（数量列 flexShrink:0 保权重），badge 独立第二行——
+              // 窄屏（~412dp）上长徽章与数量列共存会溢出叠字（RN 原生不裁剪，手机实测实锤）
               <View
                 key={ing.id}
-                className={`flex-row items-center gap-3 py-2 ${
+                className={`gap-1 py-2 ${
                   i < items.length - 1 ? 'border-b border-surface-variant/40' : ''
                 }`}
               >
-                <View className="flex-1 flex-row items-center gap-2">
-                  <Typography variant="bodyLg">{ing.name}</Typography>
-                  {badge && (
-                    <Chip label={badge.label} tone={badge.tone} shape="rounded" textVariant="labelCaps" />
-                  )}
+                <View className="flex-row items-center gap-3">
+                  <View className="flex-1">
+                    <Typography variant="bodyLg">{ing.name}</Typography>
+                  </View>
+                  <View className="flex-row items-center gap-2" style={{ flexShrink: 0 }}>
+                    <Typography variant="measurementSm" className="text-on-surface-variant">
+                      {Number(ing.amount)} {ing.unit}
+                    </Typography>
+                    <MaterialIcons
+                      name="arrow-forward"
+                      size={14}
+                      color={colors['on-surface-variant']}
+                    />
+                    <Typography
+                      variant="measurementLg"
+                      className={showDimmed ? 'opacity-50' : undefined}
+                    >
+                      {displayValue} {ing.unit}
+                    </Typography>
+                  </View>
                 </View>
-                <Typography variant="measurementSm" className="text-on-surface-variant">
-                  {Number(ing.amount)} {ing.unit}
-                </Typography>
-                <MaterialIcons name="arrow-forward" size={14} color={colors['on-surface-variant']} />
-                <Typography
-                  variant="measurementLg"
-                  className={showDimmed ? 'opacity-50' : undefined}
-                >
-                  {displayValue} {ing.unit}
-                </Typography>
+                {badge && (
+                  <View style={{ alignSelf: 'flex-start', maxWidth: '100%' }}>
+                    <Chip
+                      label={badge.label}
+                      tone={badge.tone}
+                      shape="rounded"
+                      textVariant="labelCaps"
+                      numberOfLines={1}
+                    />
+                  </View>
+                )}
               </View>
             );
           })}

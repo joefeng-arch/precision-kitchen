@@ -23,13 +23,18 @@ export function RecipeCard({ recipe, onPress }: RecipeCardProps) {
       className="rounded-xl border border-card-border bg-surface-container-lowest p-4"
       style={shadows.card}
     >
-      <View className="aspect-[4/5] overflow-hidden rounded-lg bg-surface-container-low">
-        {imageUri && (
-          <Image source={{ uri: imageUri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-        )}
-      </View>
+      {/* 无图（导入配方常见）走紧凑纯文字卡，不留空块 */}
+      {imageUri && (
+        <View className="aspect-[4/5] overflow-hidden rounded-lg bg-surface-container-low">
+          <Image
+            source={{ uri: imageUri }}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="cover"
+          />
+        </View>
+      )}
 
-      <View className="mt-4 flex-row items-start justify-between gap-2">
+      <View className={`${imageUri ? 'mt-4' : ''} flex-row items-start justify-between gap-2`}>
         <Typography variant="headlineMd" className="flex-1">
           {recipe.title}
         </Typography>
