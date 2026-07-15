@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Typography } from '@/components/ui';
@@ -8,6 +8,7 @@ import { useScaleRecipe } from '@/lib/api/hooks/useScaleRecipe';
 import type { RecipeDetail } from '@/lib/api/types';
 
 import { buildRatioBasedRequest } from './buildScaleRequest';
+import { getLastScale, setLastScale } from './lastScale';
 import { RatioRuler } from './RatioRuler';
 import { ScaledIngredientList } from './ScaledIngredientList';
 
@@ -17,8 +18,25 @@ export function RatioBasedControls({ recipe }: { recipe: RecipeDetail }) {
   // filter is data-hygiene for malformed recipes, not real subset semantics.
   const members = recipe.ingredients.filter((i) => i.ratioValue != null);
   const defaultMember = members.find((i) => i.scalingRole === 'anchor') ?? members[0];
-  const [selectedId, setSelectedId] = useState<number | undefined>(defaultMember?.id);
+  // 会话内重进：恢复上次锁定成员与数值（mount 时冻结）
+  const [restoredLock] = useState(() => {
+    const body = getLastScale(recipe.id)?.body;
+    return body?.profile === 'ratio_based' ? body.ratioLock : undefined;
+  });
+  const [selectedId, setSelectedId] = useState<number | undefined>(
+    restoredLock?.id ?? defaultMember?.id,
+  );
   const mutation = useScaleRecipe();
+
+  useEffect(() => {
+    if (restoredLock) {
+      mutation.mutate({
+        id: recipe.id,
+        body: buildRatioBasedRequest(restoredLock.id, restoredLock.value),
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!defaultMember) {
     return (
@@ -32,7 +50,9 @@ export function RatioBasedControls({ recipe }: { recipe: RecipeDetail }) {
   const anchorMember = members.find((i) => i.scalingRole === 'anchor');
 
   const fire = (value: number) => {
-    mutation.mutate({ id: recipe.id, body: buildRatioBasedRequest(selected.id, value) });
+    const body = buildRatioBasedRequest(selected.id, value);
+    setLastScale(recipe.id, { body });
+    mutation.mutate({ id: recipe.id, body });
   };
 
   const scaledById = mutation.data
@@ -70,7 +90,11 @@ export function RatioBasedControls({ recipe }: { recipe: RecipeDetail }) {
       </View>
       <RatioRuler
         key={selected.id}
-        initialValue={Number(selected.amount)}
+        initialValue={
+          restoredLock && restoredLock.id === selected.id
+            ? restoredLock.value
+            : Number(selected.amount)
+        }
         min={Number(selected.amount) * 0.25}
         max={Number(selected.amount) * 4}
         label={selected.name ?? 'Ingredient'}

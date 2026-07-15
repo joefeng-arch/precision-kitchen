@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 
 import { Button, Chip, Typography } from '@/components/ui';
 import { ApiClientError } from '@/lib/api/errors';
@@ -21,6 +21,9 @@ const PRICE_UNITS = ['g', 'kg', 'ml', 'l', 'oz', 'lb', 'cup'];
 
 const inputClassName =
   'rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-on-surface';
+/** 校验失败字段的红框（录屏实测：只有文字报错时用户对不上是哪个框） */
+const inputErrorClassName =
+  'rounded-lg border border-error bg-surface-container-lowest px-4 py-3 text-on-surface';
 
 function initialState(item?: UserIngredientView): PantryFormState {
   if (!item) return emptyPantryForm;
@@ -87,7 +90,11 @@ export function PantryItemForm({
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+    <ScrollView contentContainerStyle={{ padding: 20, gap: 20 }} keyboardShouldPersistTaps="handled">
       {/* 名称 + autocomplete */}
       <View className="gap-2">
         <Typography variant="labelCaps" className="text-on-surface-variant">
@@ -103,7 +110,7 @@ export function PantryItemForm({
           </Pressable>
         ) : (
           <TextInput
-            className={inputClassName}
+            className={errors.name ? inputErrorClassName : inputClassName}
             placeholder="e.g. Bread flour"
             placeholderTextColor={colors['on-surface-variant']}
             value={form.name}
@@ -158,8 +165,8 @@ export function PantryItemForm({
           Price per unit
         </Typography>
         <TextInput
-          className={inputClassName}
-          placeholder="0.004"
+          className={errors.unitPrice || errors.priceUnit ? inputErrorClassName : inputClassName}
+          placeholder="e.g. 0.004"
           placeholderTextColor={colors['on-surface-variant']}
           keyboardType="decimal-pad"
           value={form.unitPrice}
@@ -189,8 +196,8 @@ export function PantryItemForm({
         </Typography>
         <View className="flex-row gap-2">
           <TextInput
-            className={`${inputClassName} flex-1`}
-            placeholder="500"
+            className={`${errors.stockAmount ? inputErrorClassName : inputClassName} flex-1`}
+            placeholder="e.g. 500"
             placeholderTextColor={colors['on-surface-variant']}
             keyboardType="decimal-pad"
             value={form.stockAmount}
@@ -234,5 +241,6 @@ export function PantryItemForm({
         onPress={handleSubmit}
       />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

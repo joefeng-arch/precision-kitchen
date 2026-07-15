@@ -84,6 +84,8 @@ export function CostSummary({ recipeId, scale }: CostSummaryProps) {
   }
 
   const { currency, totalCost, unknownCount, lines } = cost.data;
+  // 全员未定价时 $0.00 具误导性（手机实测：用户以为成本就是零）——改占位符 + 引导
+  const nothingPriced = lines.length > 0 && unknownCount === lines.length;
 
   return (
     <View className="rounded-lg border border-surface-variant/60 bg-surface-container-lowest p-4">
@@ -102,7 +104,9 @@ export function CostSummary({ recipeId, scale }: CostSummaryProps) {
           )}
         </View>
         <View className="flex-row items-center gap-2">
-          <Typography variant="measurementLg">{formatMoney(currency, totalCost)}</Typography>
+          <Typography variant="measurementLg">
+            {nothingPriced ? '—' : formatMoney(currency, totalCost)}
+          </Typography>
           <MaterialIcons
             name={expanded ? 'expand-less' : 'expand-more'}
             size={20}
@@ -111,12 +115,16 @@ export function CostSummary({ recipeId, scale }: CostSummaryProps) {
         </View>
       </Pressable>
 
-      {unknownCount > 0 && (
+      {nothingPriced ? (
+        <Typography variant="bodyMd" className="mt-1 text-on-surface-variant">
+          Add pantry prices to estimate this recipe&apos;s cost.
+        </Typography>
+      ) : unknownCount > 0 ? (
         <Typography variant="bodyMd" className="mt-1 text-on-surface-variant">
           {unknownCount} {unknownCount === 1 ? 'ingredient' : 'ingredients'} unpriced — add{' '}
           {unknownCount === 1 ? 'it' : 'them'} to your pantry for a fuller estimate.
         </Typography>
-      )}
+      ) : null}
 
       {expanded && (
         <View className="mt-3 border-t border-surface-variant/40 pt-2">
